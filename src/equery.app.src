@@ -7,6 +7,5 @@
                   kernel,
                   stdlib
                  ]},
-  {mod, { equery_app, []}},
   {env, []}
  ]}.

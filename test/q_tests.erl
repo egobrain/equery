@@ -2,6 +2,8 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
+-compile({parse_transform, equery}).
+
 -define(USER_SCHEMA, #{
         fields => #{
             id => #{ type => serial },
@@ -36,6 +38,37 @@ q_test() ->
             q:filter(
                 fun([_,#{text := Name}]) ->
                     qast:'=:='(Name, <<"test2">>)
+                end)
+        ]),
+    ?assertEqual(
+         <<"select "
+           "\"__table-0\".\"id\","
+           "\"__table-0\".\"name\","
+           "\"__table-0\".\"password\","
+           "\"__table-0\".\"salt\" "
+           "from \"users\" as \"__table-0\" "
+           "join \"comments\" as \"__table-1\" "
+           "on (\"__table-0\".\"id\" = \"__table-1\".\"author\") "
+           "where ((\"__table-0\".\"name\" = $1) and (\"__table-1\".\"text\" = $2))">>,
+         Sql),
+    ?assertEqual([<<"test1">>, <<"test2">>], Args),
+    ?assertEqual(#{id=>1, name=>2, password=>3, salt=>4}, Constructor({1,2,3,4})).
+
+q_compile_test() ->
+    {Sql, Args, Constructor} =
+        qsql:select([
+            q:from(?USER_SCHEMA),
+            q:filter(
+                fun([#{name := Name}]) ->
+                    Name =:= <<"test1">>
+                end),
+            q:join(?COMMENT_SCHEMA,
+                fun([#{id := UserId}, #{author := AuthorId}]) ->
+                    UserId =:= AuthorId
+                end),
+            q:filter(
+                fun([_,#{text := Name}]) ->
+                    Name =:= <<"test2">>
                 end)
         ]),
     ?assertEqual(

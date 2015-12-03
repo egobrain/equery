@@ -6,6 +6,8 @@
          select/1
         ]).
 
+-compile(export_all).
+
 -record(state, {
             aliases=#{}, tables_cnt=0,
             args=[], args_cnt=0
