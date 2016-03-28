@@ -22,7 +22,7 @@ select(#query{
     case is_map(RFields) of
         true ->
             RFieldsList = maps:to_list(RFields),
-            Opts = fields_opts(RFieldsList),
+            Opts = #{type => fields_opts(RFieldsList)},
             Values = maps:values(RFields);
         false ->
             Opts = qast:opts(RFields),
@@ -38,7 +38,7 @@ select(#query{
         order_by_exp(OrderBy),
         limit_exp(Limit),
         offset_exp(Offset)
-    ], #{type => Opts});
+    ], Opts);
 select(List) when is_list(List) ->
     select(q:pipe(List)).
 
@@ -105,8 +105,7 @@ returning_exp(Fields) ->
         ])
     ]).
 
-tables_exp([]) -> qast:raw("");
-tables_exp(Tables) ->
+tables_exp([_|_] = Tables) ->
     qast:exp([
         qast:raw(" from "),
         qast:join([

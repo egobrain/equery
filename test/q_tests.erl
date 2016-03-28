@@ -12,7 +12,10 @@
             password => #{type => {varchar, 60}, required => true},
             salt => #{type => {varchar, 24}, required => true}
         },
-        table => <<"users">>
+        table => <<"users">>,
+        links => #{
+            comments => {has_many, ?COMMENT_SCHEMA, #{id => author}}
+        }
     }).
 -define(USER_FIELDS, maps:get(fields, ?USER_SCHEMA)).
 -define(USER_FIELDS(L), maps:with(L, ?USER_FIELDS)).
@@ -27,8 +30,15 @@
             author => #{type => integer},
             text => #{type => text}
         },
-        table => <<"comments">>
+        table => <<"comments">>,
+        links => #{
+           author => {belongs_to, ?MODULE, #{author => id}}
+        }
     }).
+
+-define(COMMENT_FIELDS, maps:get(fields, ?COMMENT_SCHEMA)).
+-define(COMMENT_FIELDS_LIST, maps:to_list(?COMMENT_FIELDS)).
+-define(COMMENT_FIELDS_LIST_WITHOUT(L), maps:to_list(maps:without(L, ?COMMENT_FIELDS))).
 
 schema() -> ?USER_SCHEMA.
 
@@ -156,7 +166,7 @@ q_data_test() ->
          <<"select $1 from \"users\" as \"__table-0\"">>,
          Sql),
     ?assertEqual([1], Args),
-    ?assertEqual(#{}, ReturningFields).
+    ?assertEqual(undefined, ReturningFields).
 
 
 q_group_by_test() ->
@@ -252,7 +262,7 @@ complex_test() ->
     ?assertEqual([{comments_cnt, #{type => integer}}|?USER_FIELDS_LIST([name])], Feilds).
 
 single_item_select_test() ->
-    {Sql, Args, Feilds} = to_sql(
+    {Sql, Args, Type} = to_sql(
         qsql:select([
             q:from(?USER_SCHEMA),
             q:select(fun([#{id := Id}]) -> Id end)
@@ -261,8 +271,8 @@ single_item_select_test() ->
          <<"select \"__table-0\".\"id\" from \"users\" as \"__table-0\"">>,
          Sql),
     ?assertEqual([], Args),
-    [{id, Opts}] = ?USER_FIELDS_LIST([id]),
-    ?assertEqual(Opts, Feilds).
+    [{id, #{type := RType}}] = ?USER_FIELDS_LIST([id]),
+    ?assertEqual(RType, Type).
 
 update_select_test() ->
     {Sql, Args, Feilds} = to_sql(
@@ -383,18 +393,69 @@ row_test() ->
            ") from \"users\" as \"__table-0\"">>,
          Sql),
     ?assertEqual([], Args),
-    ?assertEqual(#{type => {record, ?USER_FIELDS_LIST}}, ReturningFields).
+    ?assertEqual({record, ?USER_FIELDS_LIST}, ReturningFields).
+
+belongs_to_test() ->
+    ?assertEqual(
+        {<<"select "
+               "select row("
+                   "\"__table-0\".\"id\","
+                   "\"__table-0\".\"name\","
+                   "\"__table-0\".\"password\","
+                   "\"__table-0\".\"salt\") from \"users\" as \"__table-0\" "
+                "where (\"__table-1\".\"author\" = \"__table-0\".\"id\"),"
+                "\"__table-1\".\"id\","
+                "\"__table-1\".\"text\" "
+           "from \"comments\" as \"__table-1\"">>,
+           [],
+           [
+            {author,#{type => {record,?USER_FIELDS_LIST}}}
+            | ?COMMENT_FIELDS_LIST_WITHOUT([author])
+           ]},
+        to_sql(qsql:select([
+            q:from(?COMMENT_SCHEMA),
+            q:preload(author)
+        ]))).
+
+has_many_test() ->
+    ?assertEqual(
+        {<<"select "
+               "ARRAY(select row("
+                   "\"__table-0\".\"author\","
+                   "\"__table-0\".\"id\","
+                   "\"__table-0\".\"text\") from \"comments\" as \"__table-0\" "
+               "where (\"__table-1\".\"id\" = \"__table-0\".\"author\")),"
+               "\"__table-1\".\"id\","
+               "\"__table-1\".\"name\","
+               "\"__table-1\".\"password\",\"__table-1\".\"salt\" "
+               "from \"users\" as \"__table-1\"">>,
+           [],
+           [
+            {comments,#{type => {array, {record, ?COMMENT_FIELDS_LIST}}}}
+            | ?USER_FIELDS_LIST
+           ]},
+        to_sql(qsql:select([
+            q:from(?USER_SCHEMA),
+            q:preload(comments)
+        ]))).
+
 
 pt_test() ->
     Path = "./test/test_m.tpl",
     {ok, Bin} = file:read_file(Path),
     {ok, M, ModuleBin} = compile_module_str(binary_to_list(Bin)),
     {module, M} = code:load_binary(M, "", ModuleBin),
+    Q = q:from(M),
     ?assertEqual(
          {<<"select \"__table-0\".\"id\" from \"test\" as \"__table-0\" where "
             "(\"__table-0\".\"id\" > $1)">>,
           [3]},
-         qast:to_sql(qsql:select(M:filter(3)))).
+         qast:to_sql(qsql:select(M:filter(3, Q)))),
+    ?assertEqual(
+         {<<"select \"__table-0\".\"id\" from \"test\" as \"__table-0\" where "
+            "(\"__table-0\".\"id\" = $1)">>,
+          [3]},
+         qast:to_sql(qsql:select(M:filter(3, q:data(fun(D) -> D ++ D end, Q))))).
 
 transform_fun_test() ->
     FunS = "fun(A) -> not (A =:= 2) end.",
@@ -412,8 +473,8 @@ transform_fun_test() ->
 
 to_sql(QAst) ->
     {Sql, Args} = qast:to_sql(QAst),
-    #{type := Fields} = qast:opts(QAst),
-    {Sql, Args, Fields}.
+    Type = maps:get(type, qast:opts(QAst), undefined),
+    {Sql, Args, Type}.
 
 compile_fun_str(FunS) ->
     {ok, Tokens, _} = erl_scan:string(FunS),

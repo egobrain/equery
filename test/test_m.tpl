@@ -4,7 +4,8 @@
 
 -export([
          schema/0,
-         filter/1
+         filter/2,
+         wrong/1
         ]).
 
 schema() ->
@@ -14,11 +15,17 @@ schema() ->
       table => <<"test">>
     }.
 
-filter(Min) ->
+filter(Min, Q) ->
+    q:where(
+        fun ([#{id := Id}]) ->
+            Id > Min
+                bor bnot (bnot Min); %% skiped ops
+            ([#{id := Id}, _]) ->
+            Id =:= Min
+        end, Q).
+
+wrong(_Q) ->
     q:pipe([
         q:from(test_m),
-        q:where(fun([#{id := Id}]) ->
-            Id > Min
-            bor bnot (bnot Min) %% skiped ops
-        end)
+        q:where(1)
     ]).

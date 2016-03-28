@@ -39,7 +39,7 @@ opts(_) -> #{}.
 set_opts({'$value', _Opts, Value}, NewOpts) -> {'$value', NewOpts, Value};
 set_opts({'$exp', _Opts, Exp}, NewOpts) -> {'$exp', NewOpts, Exp};
 set_opts({'$raw', _Opts, Raw}, NewOpts) -> {'$raw', NewOpts, Raw};
-set_opts({'$table', _Raw}, _NewOpts) -> throw(is_table);
+set_opts({'$table', _Raw}=Node, _NewOpts) -> Node;
 set_opts(V, NewOpts) -> value(V, NewOpts).
 
 is_ast({'$value', _Opts, _Value}) -> true;
@@ -52,7 +52,7 @@ is_ast(_) -> false.
 %% Utils
 %% =============================================================================
 
-join([], _Sep) -> [];
+join([], _Sep) -> qast:exp([]);
 join([H|T], Sep) ->
     qast:exp([H|lists:foldr(fun(I, Acc) -> [Sep,I|Acc] end, [], T)]).
 
@@ -102,3 +102,44 @@ get_table_alias(TRef, #state{aliases=As, tables_cnt=Cnt}=St) ->
             As2 = maps:put(TRef, TAlias, As),
             {TAlias, St#state{aliases=As2, tables_cnt=Cnt+1}}
     end.
+
+
+%% =============================================================================
+%% Tests
+%% =============================================================================
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+
+ast_utils_test_() ->
+    NewOpts = #{value => a},
+    Tests = [
+       {"value", fun value/1, 1, true, NewOpts},
+       {"exp", fun exp/1, [], true, NewOpts},
+       {"raw", fun raw/1, "test", true, NewOpts},
+       {"table", fun table/1, make_ref(), true, #{}},
+       {"some value", fun(A) -> A end, 123, false, NewOpts}
+    ],
+    [
+     {Name, fun() ->
+         Ast = CFun(V),
+         IsAst = is_ast(Ast),
+         #{} = opts(Ast),
+         Ast2 = set_opts(Ast, NewOpts),
+         true = is_ast(Ast2),
+         RNewOpts = opts(Ast2)
+     end} || {Name, CFun, V, IsAst, RNewOpts} <- Tests
+    ].
+
+join_test_() ->
+    Sep = qast:raw(","),
+    [
+     ?_assertEqual(
+          {<<>>, []},
+          qast:to_sql(join([], Sep))),
+     ?_assertEqual(
+          {<<"$1,$2">>, [1,2]},
+          qast:to_sql(join([1,2], Sep)))
+    ].
+
+-endif.
