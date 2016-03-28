@@ -1,5 +1,5 @@
 [![Build Status](https://travis-ci.org/egobrain/equery.png?branch=master)](https://travis-ci.org/egobrain/equery.png?branch=master)
-[![Coveralls](https://img.shields.io/coveralls/egobrain/equery.svg)](https://coveralls.io/github/egobrain/equery)
+[![Coverage Status](https://coveralls.io/repos/github/egobrain/equery/badge.svg?branch=master)](https://coveralls.io/github/egobrain/equery?branch=master)
 [![GitHub tag](https://img.shields.io/github/tag/egobrain/equery.svg)](https://github.com/egobrain/equery)
 [![Hex.pm](https://img.shields.io/hexpm/v/equery.svg)](https://hex.pm/packages/equery)
 
