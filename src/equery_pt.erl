@@ -1,8 +1,8 @@
--module(equery).
+-module(equery_pt).
 
 -export([
          parse_transform/2,
-         compile/1
+         transform_fun/1
         ]).
 
 -include("ast_helpers.hrl").
@@ -10,9 +10,9 @@
 -record(state, {}).
 
 parse_transform(Ast, _Opts) ->
-    {module, _} = code:ensure_loaded(qast),
+    {module, _} = code:ensure_loaded(q),
     {Ast2, _} = traverse(fun search_and_compile/2, undefined, Ast),
-    %% ct:pal("~p", [pretty_print(Ast2)]),
+    %% ct:pal("~s", [pretty_print(Ast2)]),
     Ast2.
 
 traverse(Fun, State, List) when is_list(List) ->
@@ -28,7 +28,7 @@ traverse(_Fun, State, Node) ->
     {Node, State}.
 
 search_and_compile({call, L1, {remote, L2, {atom, L3, q}, {atom, L4, F}}, Args}, St) when
-      F =:= filter;
+      F =:= where;
       F =:= join;
       F =:= compile ->
     {ArgsNode, St2} = lists:mapfoldl(
@@ -48,20 +48,25 @@ compile(Clauses) ->
     Clauses2.
 
 compile([{clause, _Line, [Cons], [], [Exp]}], St) ->
-    {[{clause, _Line, [Cons], [], [filter_exp(Exp)]}], St};
-compile(Ast, St) -> {Ast, St}.
+    {[{clause, _Line, [Cons], [], [where_exp(Exp)]}], St};
+compile(Ast, St) -> {where_exp(Ast), St}.
 
-filter_exp(Ast) ->
+where_exp(Ast) ->
     {NewAst, _State} =
         traverse_(
             fun({op, _L, Op, A, B} = Node, S) ->
-                case erlang:function_exported(qast, Op, 2) of
-                    true -> {?apply(qast, Op, [A,B]), S};
+                case erlang:function_exported(q, Op, 2) of
+                    true -> {erl_syntax:revert(?apply(q, Op, [A,B])), S};
+                    false -> {Node, S}
+                end;
+               ({op, _L, Op, A} = Node, S) ->
+                case erlang:function_exported(q, Op, 1) of
+                    true -> {erl_syntax:revert(?apply(q, Op, [A])), S};
                     false -> {Node, S}
                 end;
                (Node, S) -> {Node, S}
             end, undefined, Ast),
-    erl_syntax:revert(NewAst).
+    NewAst.
 
 traverse_(Fun, State, List) when is_list(List) ->
     lists:mapfoldl(fun(L, S) -> traverse_(Fun, S, L) end, State, List);
@@ -72,6 +77,16 @@ traverse_(Fun, State, Tuple) when is_tuple(Tuple) ->
     Fun(Tuple2, State2);
 traverse_(_Fun, State, Ast) ->
     {Ast, State}.
+
+transform_fun(Fun) ->
+    {env, Env} = erlang:fun_info(Fun, env),
+    case Env of
+        [{Bindings, _, _, Ast}] ->
+            Exprs = erl_syntax:revert(?func(compile(Ast))),
+            {value, Fun2, _} = erl_eval:expr(Exprs, Bindings),
+            Fun2;
+        _ -> Fun
+    end.
 
 %% =============================================================================
 %% Utils

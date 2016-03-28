@@ -3,104 +3,168 @@
 -include("query.hrl").
 
 -export([
-         select/1
+         select/1,
+         insert/1,
+         update/1,
+         delete/1
         ]).
 
--compile(export_all).
-
--record(state, {
-            aliases=#{}, tables_cnt=0,
-            args=[], args_cnt=0
-       }).
-
+select(#query{
+            tables=Tables,
+            where=Where,
+            select=RFields,
+            joins=Joins,
+            group_by=GroupBy,
+            order_by=OrderBy,
+            limit=Limit,
+            offset=Offset
+         }) ->
+    case is_map(RFields) of
+        true ->
+            RFieldsList = maps:to_list(RFields),
+            Opts = fields_opts(RFieldsList),
+            Values = maps:values(RFields);
+        false ->
+            Opts = qast:opts(RFields),
+            Values = [RFields]
+    end,
+    qast:exp([
+        qast:raw("select "),
+        fields_exp(Values),
+        tables_exp(Tables),
+        joins_exp(Joins),
+        where_exp(Where),
+        group_by_exp(GroupBy),
+        order_by_exp(OrderBy),
+        limit_exp(Limit),
+        offset_exp(Offset)
+    ], #{type => Opts});
 select(List) when is_list(List) ->
-    select(q:pipe(List));
-select(#query{tables=Tables, filter=Filter, select=Fields, joins=Joins}) when Tables =/= [] ->
-    State = #state{},
-    {FieldsSql, State2} = fields_sql(Fields, State),
-    {WhereSql, State3} = to_sql(Filter, State2),
-    {TablesSql0, State4} = lists:mapfoldl(
-        fun({T, TRef}, St) ->
-            {TAlias, St2} = get_table_alias(TRef, St),
-            Sql = [wrap(T), " as ", wrap(TAlias)],
-            {Sql, St2}
-        end, State3, Tables),
-    TablesSql =  join(TablesSql0, ","),
+    select(q:pipe(List)).
 
-    {JoinsSql, State5} = lists:mapfoldl(
-        fun({inner, {Table, TRef}, Exp}, St) ->
-            {TAlias, St2} = get_table_alias(TRef, St),
-            {Sql, St3} = to_sql(Exp, St2),
-            {[" join ", wrap(Table),  " as ", wrap(TAlias), " on ", Sql], St3}
-        end, State4, Joins),
-    {iolist_to_binary([
-        "select ",
-        FieldsSql,
-        " from ",
-        TablesSql,
-        JoinsSql,
-        case WhereSql of
-            [] -> [];
-            _ -> [" where ", WhereSql]
-        end
-    ]), lists:reverse(State5#state.args), constructor(Fields)}.
+insert(#query{tables=[{Table, _TRef}], select=RFields, set=Set}) ->
+    {SetKeys, SetValues} = lists:unzip([
+        {{K, qast:opts(V)}, V} || {K, V} <- maps:to_list(Set)
+    ]),
+    RFieldsList = maps:to_list(RFields),
+    qast:exp([
+        qast:raw(["insert into ", equery_utils:wrap(Table), "("]),
+        fields_exp([
+            qast:exp([qast:raw(equery_utils:field_name(F))], Opts) || {F, Opts} <- SetKeys
+        ]),
+        qast:raw([") values ("]),
+        fields_exp(SetValues),
+        qast:raw([")"]),
+        returning_exp(RFieldsList)
+    ], #{type => fields_opts(RFieldsList)}).
 
-fields_sql(Fields, State) ->
-    {FieldsSql, State2} =
-        lists:mapfoldl(fun to_sql/2, State, maps:values(Fields)),
-    {join(FieldsSql, ","), State2}.
+update(List) when is_list(List) ->
+    update(q:pipe(List));
+update(#query{tables=[{Table, TRef}], select=RFields, where=Where, set=Set}) ->
+    RFieldsList = maps:to_list(RFields),
+    qast:exp([
+        qast:raw(["update ", equery_utils:wrap(Table), " as "]),
+        qast:table(TRef),
+        qast:raw(" set "),
+        qast:join([
+            qast:exp([
+                qast:raw([equery_utils:field_name(F), " = "]), Node
+            ]) || {F, Node} <- maps:to_list(Set)
+        ], qast:raw(",")),
+        where_exp(Where),
+        returning_exp(RFieldsList)
+     ], #{type => fields_opts(RFieldsList)}).
 
-join([], _Sep) -> [];
-join([H|T], Sep) -> [H|[[Sep,E]||E<-T]].
+delete(List) when is_list(List) ->
+    delete(q:pipe(List));
+delete(#query{tables=[{Table, TRef}], select=RFields, where=Where}) ->
+    RFieldsList = maps:to_list(RFields),
+    qast:exp([
+        qast:raw(["delete from ", equery_utils:wrap(Table), " as "]),
+        qast:table(TRef),
+        where_exp(Where),
+        returning_exp(RFieldsList)
+    ], #{type => fields_opts(RFieldsList)}).
 
-constructor(Fields) ->
-    FieldsNames = maps:keys(Fields),
-    fun(TupleData) ->
-        maps:from_list(lists:zip(FieldsNames, tuple_to_list(TupleData)))
-    end.
+%% =============================================================================
+%% Internal functions
+%% =============================================================================
 
-to_sql(undefined, State) -> {[], State};
-to_sql(Ast, State) ->
-    traverse(
-        fun({'$value', V}, #state{args=Vs, args_cnt=Cnt}=St) ->
-               NewCnt = Cnt+1,
-               {index(NewCnt), St#state{args=[V|Vs], args_cnt=NewCnt}};
-           ({'$field', TRef, V}, St)->
-               {TAlias, St2} = get_table_alias(TRef, St),
-               {field_name(TAlias, V), St2};
-           ({'$raw', V}, St) ->
-               {V, St}
-        end, State, Ast).
+%% = Exp builders ==============================================================
 
-traverse(F, Acc, {T, List}) when T =:= '$exp' ->
-    lists:mapfoldl(fun(E, A) -> traverse(F, A, E) end, Acc, List);
-traverse(F, Acc, {'$raw', _}=Item) ->
-    F(Item, Acc);
-traverse(F, Acc, {'$field', _F, _V}=Item) ->
-    F(Item, Acc);
-traverse(F, Acc, {'$value', _V}=Item) ->
-    F(Item, Acc);
-%% Other is value
-traverse(F, Acc, V) ->
-    F({'$value', V}, Acc).
+fields_exp(FieldsExps) ->
+    qast:join(FieldsExps, qast:raw(",")).
 
-index(N) ->
-    [ $$, integer_to_binary(N) ].
+returning_exp([]) -> qast:raw([]);
+returning_exp(Fields) ->
+    qast:exp([
+        qast:raw(" returning "),
+        fields_exp([
+            qast:exp([qast:raw(equery_utils:field_name(F))], Opts)
+            || {F, Opts} <- Fields
+        ])
+    ]).
 
-table_alias(Int) ->
-    lists:concat(["__table-",Int]).
+tables_exp([]) -> qast:raw("");
+tables_exp(Tables) ->
+    qast:exp([
+        qast:raw(" from "),
+        qast:join([
+            qast:exp([qast:raw([equery_utils:wrap(Table), " as "]), qast:table(TRef)])
+            || {Table, TRef} <- Tables
+        ], qast:raw(","))
+    ]).
 
-field_name(Talias, Fieldname) ->
-    [wrap(Talias), $., wrap(atom_to_list(Fieldname))].
+joins_exp(Joins) ->
+    qast:exp(lists:map(
+        fun({inner, JoinAst, Exp}) ->
+            qast:exp([
+                qast:raw([" join "]),
+                JoinAst,
+                qast:raw(" on "),
+                Exp
+            ])
+        end, lists:reverse(Joins))).
 
-get_table_alias(TRef, #state{aliases=As, tables_cnt=Cnt}=St) ->
-    case maps:find(TRef, As) of
-        {ok, TAlias} -> {TAlias, St};
-        error ->
-            TAlias = table_alias(Cnt),
-            As2 = maps:put(TRef, TAlias, As),
-            {TAlias, St#state{aliases=As2, tables_cnt=Cnt+1}}
-    end.
+where_exp(undefined) -> qast:raw([]);
+where_exp(WhereExp) -> qast:exp([qast:raw(" where "), WhereExp]).
 
-wrap(F) ->
-    ["\"", F, "\""].
+group_by_exp([]) -> qast:raw([]);
+group_by_exp(GroupBy) ->
+    qast:exp([
+        qast:raw(" group by "),
+        qast:join(GroupBy, qast:raw(","))
+    ]).
+
+order_by_exp([]) -> qast:raw([]);
+order_by_exp(OrderBy) ->
+    OrderExps = lists:map(fun({OrderField,Direction}) ->
+        qast:exp([
+            OrderField,
+            qast:raw(case Direction of
+                asc -> <<" ASC">>;
+                desc -> <<" DESC">>
+            end)
+        ])
+    end, OrderBy),
+    qast:exp([
+        qast:raw(" order by "),
+        qast:join(OrderExps, qast:raw(","))
+    ]).
+
+limit_exp(undefined) -> qast:raw([]);
+limit_exp(Limit) ->
+    qast:exp([
+        qast:raw(" limit "),
+        qast:value(Limit, #{type => integer})
+    ]).
+
+offset_exp(undefined) -> qast:raw([]);
+offset_exp(Offset) ->
+    qast:exp([
+        qast:raw(" offset "),
+        qast:value(Offset, #{type => integer})
+    ]).
+
+fields_opts(FieldsList) ->
+    [{F, qast:opts(Node)} || {F, Node} <- FieldsList].
