@@ -6,5 +6,8 @@
         kernel,
         stdlib
     ]},
-    {env, []}
+    {env, []},
+    {maintainers, ["Yakov Kozlov"]},
+    {licenses, ["MIT"]},
+    {links, [{"Github", "https://github.com/egobrain/equery"}]}
  ]}.
