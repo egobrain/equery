@@ -388,7 +388,8 @@ row_test() ->
 pt_test() ->
     Path = "./test/test_m.tpl",
     {ok, Bin} = file:read_file(Path),
-    {ok, M, _} = compile_module_str(binary_to_list(Bin)),
+    {ok, M, ModuleBin} = compile_module_str(binary_to_list(Bin)),
+    {module, M} = code:load_binary(M, "", ModuleBin),
     ?assertEqual(
          {<<"select \"__table-0\".\"id\" from \"test\" as \"__table-0\" where "
             "(\"__table-0\".\"id\" > $1)">>,

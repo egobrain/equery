@@ -19,6 +19,6 @@ filter(Min) ->
         q:from(test_m),
         q:where(fun([#{id := Id}]) ->
             Id > Min
-            or bnot 1 %% skiped ops
+            bor bnot (bnot Min) %% skiped ops
         end)
     ]).
