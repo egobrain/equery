@@ -5,7 +5,9 @@
 
 -export([
          pipe/1,
-         pipe/2
+         pipe/2,
+
+         schema/1
         ]).
 
 -export([
@@ -68,10 +70,12 @@ pipe([Query|Funs]) ->
 pipe(Query, Funs) ->
     lists:foldl(fun(F, Q) -> F(Q) end, Query, Funs).
 
+schema(#query{schema=Schema}) -> Schema.
+
 %% = Query builders ============================================================
 
 from(Info) when is_map(Info); is_atom(Info) ->
-    Schema = schema(Info),
+    Schema = get_schema(Info),
     SchemaFields = maps:get(fields, Schema, #{}),
     Table = maps:get(table, Schema),
     TRef = make_ref(),
@@ -102,7 +106,7 @@ join(#query{select=Fields}=JoinQ, Fun, #query{data=Data, joins=Joins}=Q) ->
         joins=[{inner, JoinAst, call(Fun, [NewData])}|Joins]
     };
 join(Info, Fun, #query{data=Data, joins=Joins}=Q) ->
-    Schema = schema(Info),
+    Schema = get_schema(Info),
     SchemaFields = maps:get(fields, Schema, #{}),
     Table = maps:get(table, Schema),
     TRef = make_ref(),
@@ -299,5 +303,5 @@ preload(Link, #query{schema=#{links := Links}}=Q) ->
 
 call(Fun, Args) -> apply(equery_pt:transform_fun(Fun), Args).
 
-schema(Schema) when is_map(Schema) -> Schema;
-schema(Module) when is_atom(Module) -> Module:schema().
+get_schema(Schema) when is_map(Schema) -> Schema;
+get_schema(Module) when is_atom(Module) -> Module:schema().

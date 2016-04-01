@@ -46,6 +46,10 @@ schema() -> ?USER_SCHEMA.
 %% tests
 %% =============================================================================
 
+schema_test() ->
+    ?assertEqual(?USER_SCHEMA, q:schema(q:from(?USER_SCHEMA))),
+    ?assertEqual(?USER_SCHEMA, q:schema(q:from(?MODULE))).
+
 q_test() ->
     {Sql, Args, Feilds} = to_sql(
         qsql:select([
