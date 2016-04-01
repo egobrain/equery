@@ -54,11 +54,6 @@
          row/1
         ]).
 
--export([
-         preload/1,
-         preload/2
-        ]).
-
 -type query() :: #query{}.
 -export_type([query/0]).
 
@@ -262,40 +257,6 @@ row(Fields) when is_map(Fields) ->
         qast:join([Node || {_F, Node} <- FieldsList], qast:raw(",")),
         qast:raw(")")
     ], #{type => Type}).
-
-array(Ast) ->
-    Opts = qast:opts(Ast),
-    Type = maps:get(type, Opts, undefined),
-    qast:exp([
-        qast:raw("ARRAY("),
-        Ast,
-        qast:raw(")")
-    ], Opts#{type => {array, Type}}).
-
-%% = Utils =====================================================================
-
-preload(Link) ->
-    fun(Q) -> preload(Link, Q) end.
-
-preload(Link, #query{schema=#{links := Links}}=Q) ->
-    select(fun(Select, [MD|_]) ->
-        {LinkType, Info, IdsMap} = maps:get(Link, Links),
-        Exp = qsql:select([
-            q:from(Info),
-            q:where(fun([LinkD|_]) ->
-                maps:fold(fun(MField, LinkField, S) ->
-                    S andalso '=:='(maps:get(MField, MD), maps:get(LinkField, LinkD))
-                end, true, IdsMap)
-            end),
-            q:select(fun(SubSelect, _Data) -> q:row(SubSelect) end)
-        ]),
-        LinkExp =
-            case LinkType of
-                has_many -> array(Exp);
-                _ -> Exp
-            end,
-        maps:put(Link, LinkExp, Select)
-    end, Q).
 
 %% =============================================================================
 %% Internal functions
