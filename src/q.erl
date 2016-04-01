@@ -5,7 +5,9 @@
 
 -export([
          pipe/1,
-         pipe/2
+         pipe/2,
+
+         schema/1
         ]).
 
 -export([
@@ -52,11 +54,6 @@
          row/1
         ]).
 
--export([
-         preload/1,
-         preload/2
-        ]).
-
 -type query() :: #query{}.
 -export_type([query/0]).
 
@@ -68,10 +65,12 @@ pipe([Query|Funs]) ->
 pipe(Query, Funs) ->
     lists:foldl(fun(F, Q) -> F(Q) end, Query, Funs).
 
+schema(#query{schema=Schema}) -> Schema.
+
 %% = Query builders ============================================================
 
 from(Info) when is_map(Info); is_atom(Info) ->
-    Schema = schema(Info),
+    Schema = get_schema(Info),
     SchemaFields = maps:get(fields, Schema, #{}),
     Table = maps:get(table, Schema),
     TRef = make_ref(),
@@ -102,7 +101,7 @@ join(#query{select=Fields}=JoinQ, Fun, #query{data=Data, joins=Joins}=Q) ->
         joins=[{inner, JoinAst, call(Fun, [NewData])}|Joins]
     };
 join(Info, Fun, #query{data=Data, joins=Joins}=Q) ->
-    Schema = schema(Info),
+    Schema = get_schema(Info),
     SchemaFields = maps:get(fields, Schema, #{}),
     Table = maps:get(table, Schema),
     TRef = make_ref(),
@@ -259,45 +258,11 @@ row(Fields) when is_map(Fields) ->
         qast:raw(")")
     ], #{type => Type}).
 
-array(Ast) ->
-    Opts = qast:opts(Ast),
-    Type = maps:get(type, Opts, undefined),
-    qast:exp([
-        qast:raw("ARRAY("),
-        Ast,
-        qast:raw(")")
-    ], Opts#{type => {array, Type}}).
-
-%% = Utils =====================================================================
-
-preload(Link) ->
-    fun(Q) -> preload(Link, Q) end.
-
-preload(Link, #query{schema=#{links := Links}}=Q) ->
-    select(fun(Select, [MD|_]) ->
-        {LinkType, Info, IdsMap} = maps:get(Link, Links),
-        Exp = qsql:select([
-            q:from(Info),
-            q:where(fun([LinkD|_]) ->
-                maps:fold(fun(MField, LinkField, S) ->
-                    S andalso '=:='(maps:get(MField, MD), maps:get(LinkField, LinkD))
-                end, true, IdsMap)
-            end),
-            q:select(fun(SubSelect, _Data) -> q:row(SubSelect) end)
-        ]),
-        LinkExp =
-            case LinkType of
-                has_many -> array(Exp);
-                _ -> Exp
-            end,
-        maps:put(Link, LinkExp, Select)
-    end, Q).
-
 %% =============================================================================
 %% Internal functions
 %% =============================================================================
 
 call(Fun, Args) -> apply(equery_pt:transform_fun(Fun), Args).
 
-schema(Schema) when is_map(Schema) -> Schema;
-schema(Module) when is_atom(Module) -> Module:schema().
+get_schema(Schema) when is_map(Schema) -> Schema;
+get_schema(Module) when is_atom(Module) -> Module:schema().

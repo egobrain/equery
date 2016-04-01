@@ -46,6 +46,10 @@ schema() -> ?USER_SCHEMA.
 %% tests
 %% =============================================================================
 
+schema_test() ->
+    ?assertEqual(?USER_SCHEMA, q:schema(q:from(?USER_SCHEMA))),
+    ?assertEqual(?USER_SCHEMA, q:schema(q:from(?MODULE))).
+
 q_test() ->
     {Sql, Args, Feilds} = to_sql(
         qsql:select([
@@ -394,51 +398,6 @@ row_test() ->
          Sql),
     ?assertEqual([], Args),
     ?assertEqual({record, ?USER_FIELDS_LIST}, ReturningFields).
-
-belongs_to_test() ->
-    ?assertEqual(
-        {<<"select "
-               "select row("
-                   "\"__table-0\".\"id\","
-                   "\"__table-0\".\"name\","
-                   "\"__table-0\".\"password\","
-                   "\"__table-0\".\"salt\") from \"users\" as \"__table-0\" "
-                "where (\"__table-1\".\"author\" = \"__table-0\".\"id\"),"
-                "\"__table-1\".\"id\","
-                "\"__table-1\".\"text\" "
-           "from \"comments\" as \"__table-1\"">>,
-           [],
-           [
-            {author,#{type => {record,?USER_FIELDS_LIST}}}
-            | ?COMMENT_FIELDS_LIST_WITHOUT([author])
-           ]},
-        to_sql(qsql:select([
-            q:from(?COMMENT_SCHEMA),
-            q:preload(author)
-        ]))).
-
-has_many_test() ->
-    ?assertEqual(
-        {<<"select "
-               "ARRAY(select row("
-                   "\"__table-0\".\"author\","
-                   "\"__table-0\".\"id\","
-                   "\"__table-0\".\"text\") from \"comments\" as \"__table-0\" "
-               "where (\"__table-1\".\"id\" = \"__table-0\".\"author\")),"
-               "\"__table-1\".\"id\","
-               "\"__table-1\".\"name\","
-               "\"__table-1\".\"password\",\"__table-1\".\"salt\" "
-               "from \"users\" as \"__table-1\"">>,
-           [],
-           [
-            {comments,#{type => {array, {record, ?COMMENT_FIELDS_LIST}}}}
-            | ?USER_FIELDS_LIST
-           ]},
-        to_sql(qsql:select([
-            q:from(?USER_SCHEMA),
-            q:preload(comments)
-        ]))).
-
 
 pt_test() ->
     Path = "./test/test_m.tpl",
