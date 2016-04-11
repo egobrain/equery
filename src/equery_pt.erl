@@ -10,7 +10,7 @@
 -record(state, {}).
 
 parse_transform(Ast, _Opts) ->
-    {module, _} = code:ensure_loaded(q),
+    {module, _} = code:ensure_loaded(pg),
     {Ast2, _} = traverse(fun search_and_compile/2, undefined, Ast),
     %% ct:pal("~s", [pretty_print(Ast2)]),
     Ast2.
@@ -27,7 +27,7 @@ traverse(Fun, State, Node) when is_tuple(Node) ->
 traverse(_Fun, State, Node) ->
     {Node, State}.
 
-search_and_compile({call, L1, {remote, L2, {atom, L3, q}, {atom, L4, F}}, Args}, St) when
+search_and_compile({call, _, {remote, _, {atom, _, q}, {atom, _, F}}, Args}=Node, St) when
       F =:= where;
       F =:= join;
       F =:= compile ->
@@ -38,7 +38,7 @@ search_and_compile({call, L1, {remote, L2, {atom, L3, q}, {atom, L4, F}}, Args},
                 {RNode, S2};
            (N, S) -> {N, S}
         end, St, Args),
-    RNode = {call, L1, {remote, L2, {atom, L3, q}, {atom, L4, F}}, ArgsNode},
+    RNode = setelement(4, Node, ArgsNode),
     {RNode, St2};
 search_and_compile(Node, St) ->
     {Node, St}.
@@ -55,13 +55,13 @@ where_exp(Ast) ->
     {NewAst, _State} =
         traverse_(
             fun({op, _L, Op, A, B} = Node, S) ->
-                case erlang:function_exported(q, Op, 2) of
-                    true -> {erl_syntax:revert(?apply(q, Op, [A,B])), S};
+                case erlang:function_exported(pg, Op, 2) of
+                    true -> {erl_syntax:revert(?apply(pg, Op, [A,B])), S};
                     false -> {Node, S}
                 end;
                ({op, _L, Op, A} = Node, S) ->
-                case erlang:function_exported(q, Op, 1) of
-                    true -> {erl_syntax:revert(?apply(q, Op, [A])), S};
+                case erlang:function_exported(pg, Op, 1) of
+                    true -> {erl_syntax:revert(?apply(pg, Op, [A])), S};
                     false -> {Node, S}
                 end;
                (Node, S) -> {Node, S}
