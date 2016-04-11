@@ -4,7 +4,6 @@
 -include("ast_helpers.hrl").
 
 -export([
-         pipe/1,
          pipe/2,
 
          get/2
@@ -27,9 +26,6 @@
 -export_type([query/0]).
 
 %% = Flow ======================================================================
-
-pipe([Query|Funs]) ->
-    pipe(Query, Funs).
 
 pipe(Query, Funs) ->
     lists:foldl(fun(F, Q) -> F(Q) end, Query, Funs).

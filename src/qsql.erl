@@ -38,9 +38,7 @@ select(#query{
         order_by_exp(OrderBy),
         limit_exp(Limit),
         offset_exp(Offset)
-    ], Opts);
-select(List) when is_list(List) ->
-    select(q:pipe(List)).
+    ], Opts).
 
 insert(#query{tables=[{Table, _TRef}], select=RFields, set=Set}) ->
     {SetKeys, SetValues} = lists:unzip([
@@ -58,8 +56,6 @@ insert(#query{tables=[{Table, _TRef}], select=RFields, set=Set}) ->
         returning_exp(RFieldsList)
     ], #{type => fields_opts(RFieldsList)}).
 
-update(List) when is_list(List) ->
-    update(q:pipe(List));
 update(#query{tables=[{Table, TRef}], select=RFields, where=Where, set=Set}) ->
     RFieldsList = maps:to_list(RFields),
     qast:exp([
@@ -75,8 +71,6 @@ update(#query{tables=[{Table, TRef}], select=RFields, where=Where, set=Set}) ->
         returning_exp(RFieldsList)
      ], #{type => fields_opts(RFieldsList)}).
 
-delete(List) when is_list(List) ->
-    delete(q:pipe(List));
 delete(#query{tables=[{Table, TRef}], select=RFields, where=Where}) ->
     RFieldsList = maps:to_list(RFields),
     qast:exp([
