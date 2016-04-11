@@ -80,7 +80,7 @@ join(Info, Fun, #query{data=Data, joins=Joins}=Q) ->
         SchemaFields),
     NewData = Data ++ [Fields],
     JoinAst = qast:exp([
-        qast:raw(["\"", Table,  "\" as "]),
+        qast:raw([equery_utils:wrap(Table), " as "]),
         qast:table(TRef)
     ]),
     Q#query{
@@ -111,11 +111,11 @@ set(Fun) ->
     fun(Q) -> set(Fun, Q) end.
 set(Fun, #query{data=Data}=Q) when is_function(Fun, 1) ->
     Set = call(Fun, [Data]),
-    is_map(Set) orelse error(bad_set),
+    is_map(Set) orelse error(bad_map),
     Q#query{set=Set};
 set(Fun, #query{set=PrevSet, data=Data}=Q) when is_function(Fun, 2) ->
     Set = call(Fun, [PrevSet, Data]),
-    is_map(Set) orelse error(bad_set),
+    is_map(Set) orelse error(bad_map),
     Q#query{set=Set}.
 
 group_by(Fun) ->
