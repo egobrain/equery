@@ -92,7 +92,7 @@ index(N) ->
     [ $$, integer_to_binary(N) ].
 
 table_alias(Int) ->
-    equery_utils:wrap(lists:concat(["__table-",Int])).
+    equery_utils:wrap(["__table-",integer_to_list(Int)]).
 
 get_table_alias(TRef, #state{aliases=As, tables_cnt=Cnt}=St) ->
     case maps:find(TRef, As) of
