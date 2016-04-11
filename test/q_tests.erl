@@ -50,6 +50,14 @@ schema_test() ->
     ?assertEqual(?USER_SCHEMA, q:get(schema, q:from(?USER_SCHEMA))),
     ?assertEqual(?USER_SCHEMA, q:get(schema, q:from(?MODULE))).
 
+data_test() ->
+    ?assertEqual(
+        maps:keys(?USER_FIELDS),
+        maps:keys(hd(q:get(data, q:from(?USER_SCHEMA))))),
+    ?assertEqual(
+        maps:keys(?USER_FIELDS),
+        maps:keys(hd(q:get(data, q:from(?MODULE))))).
+
 q_test() ->
     {Sql, Args, Feilds} = to_sql(
         qsql:select(q:pipe(q:from(?USER_SCHEMA), [
