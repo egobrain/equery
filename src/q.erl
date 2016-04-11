@@ -7,7 +7,7 @@
          pipe/1,
          pipe/2,
 
-         schema/1
+         get/2
         ]).
 
 -export([
@@ -23,7 +23,6 @@
          offset/1, offset/2
         ]).
 
-
 -type query() :: #query{}.
 -export_type([query/0]).
 
@@ -35,7 +34,8 @@ pipe([Query|Funs]) ->
 pipe(Query, Funs) ->
     lists:foldl(fun(F, Q) -> F(Q) end, Query, Funs).
 
-schema(#query{schema=Schema}) -> Schema.
+get(schema, #query{schema=Schema}) -> Schema;
+get(data, #query{data=Data}) -> Data.
 
 %% = Query builders ============================================================
 
