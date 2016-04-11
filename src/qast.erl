@@ -17,31 +17,60 @@
          to_sql/1
         ]).
 
+%% =============================================================================
+%% Types
+%% =============================================================================
+
+-type opts() :: #{}.
+-type raw() :: {'$raw', opts(), iodata()}.
+-type value() :: {'$value', opts(), any()}.
+-type table() :: {'$table', reference()}.
+-type exp() :: {'$exp', opts(), [ast_node() | any()]}.
+
+-type ast_node() :: raw() | value() | table() | exp().
+
+-export_type([opts/0, raw/0, value/0, table/0, exp/0, ast_node/0]).
+
+%% =============================================================================
+%% API
+%% =============================================================================
+
+-spec field(reference(), atom(), opts()) -> exp().
 field(TableRef, Name, Opts) ->
     exp([table(TableRef), raw([".", equery_utils:field_name(Name)])], Opts).
 
+-spec value(any()) -> value().
+-spec value(any(), opts()) -> value().
 value(V) -> value(V, #{}).
 value(V, Opts) -> {'$value', Opts, V}.
 
+-spec exp([ast_node()]) -> exp().
+-spec exp([ast_node()], opts()) -> exp().
 exp(V) -> exp(V, #{}).
 exp(V, Opts) -> {'$exp', Opts, V}.
 
+-spec raw(iodata()) -> raw().
+-spec raw(iodata(), opts()) -> raw().
 raw(V) -> raw(V, #{}).
 raw(V, Opts) -> {'$raw', Opts, V}.
 
+-spec table(reference()) -> table().
 table(Ref) -> {'$table', Ref}.
 
+-spec opts(ast_node()) -> opts().
 opts({'$value', Opts, _}) -> Opts;
 opts({'$exp', Opts, _}) -> Opts;
 opts({'$raw', Opts, _}) -> Opts;
 opts(_) -> #{}.
 
+-spec set_opts(ast_node(), opts()) -> ast_node().
 set_opts({'$value', _Opts, Value}, NewOpts) -> {'$value', NewOpts, Value};
 set_opts({'$exp', _Opts, Exp}, NewOpts) -> {'$exp', NewOpts, Exp};
 set_opts({'$raw', _Opts, Raw}, NewOpts) -> {'$raw', NewOpts, Raw};
 set_opts({'$table', _Raw}=Node, _NewOpts) -> Node;
 set_opts(V, NewOpts) -> value(V, NewOpts).
 
+-spec is_ast(any()) -> boolean().
 is_ast({'$value', _Opts, _Value}) -> true;
 is_ast({'$exp', _Opts, _Exp}) -> true;
 is_ast({'$raw', _Opts, _Raw}) -> true;
@@ -52,6 +81,7 @@ is_ast(_) -> false.
 %% Utils
 %% =============================================================================
 
+-spec join([ast_node()], ast_node()) -> exp().
 join([], _Sep) -> qast:exp([]);
 join([H|T], Sep) ->
     qast:exp([H|lists:foldr(fun(I, Acc) -> [Sep,I|Acc] end, [], T)]).
@@ -60,6 +90,8 @@ join([H|T], Sep) ->
             aliases=#{}, tables_cnt=0,
             args=[], args_cnt=0
        }).
+
+-spec to_sql(ast_node()) -> {Sql :: binary(), Args :: [any()]}.
 to_sql(Ast) ->
     {Sql, #state{args=Args}} = traverse(
         fun({'$value', _Opts, V}, #state{args=Vs, args_cnt=Cnt}=St) ->
@@ -76,9 +108,9 @@ to_sql(Ast) ->
 %% Internal
 %% =============================================================================
 
-traverse(F, Acc, {T, _Opts, List}) when T =:= '$exp' ->
+traverse(F, Acc, {'$exp', _Opts, List}) ->
     lists:mapfoldl(fun(E, A) -> traverse(F, A, E) end, Acc, List);
-traverse(F, Acc, {'$raw', _, _}=Item) ->
+traverse(F, Acc, {'$raw', _Opts, _}=Item) ->
     F(Item, Acc);
 traverse(F, Acc, {'$value', _Opts, _V}=Item) ->
     F(Item, Acc);

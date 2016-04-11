@@ -85,7 +85,7 @@ q_test() ->
            "\"__table-0\".\"password\","
            "\"__table-0\".\"salt\" "
            "from \"users\" as \"__table-0\" "
-           "join \"comments\" as \"__table-1\" "
+           "inner join \"comments\" as \"__table-1\" "
            "on (\"__table-0\".\"id\" = \"__table-1\".\"author\") "
            "where ((\"__table-0\".\"name\" = $1) and (\"__table-1\".\"text\" = $2)) "
            "order by \"__table-0\".\"name\" ASC,\"__table-0\".\"id\" DESC">>,
@@ -116,7 +116,7 @@ q_compile_test() ->
            "\"__table-0\".\"password\","
            "\"__table-0\".\"salt\" "
            "from \"users\" as \"__table-0\" "
-           "join \"comments\" as \"__table-1\" "
+           "inner join \"comments\" as \"__table-1\" "
            "on (\"__table-0\".\"id\" = \"__table-1\".\"author\") "
            "where ((\"__table-0\".\"name\" = $1) and (\"__table-1\".\"text\" = $2))">>,
          Sql),
@@ -204,7 +204,7 @@ q_group_by_test() ->
          <<"select "
            "count(\"__table-0\".\"id\") "
            "from \"users\" as \"__table-0\" "
-           "join \"comments\" as \"__table-1\" "
+           "inner join \"comments\" as \"__table-1\" "
            "on (\"__table-0\".\"id\" = \"__table-1\".\"author\") "
            "where ((\"__table-0\".\"name\" = $1) and (\"__table-1\".\"text\" = $2)) "
            "group by \"__table-1\".\"author\"">>,
@@ -251,7 +251,7 @@ complex_test() ->
                "count(\"__table-0\".\"author\"),"
                "\"__table-1\".\"name\" "
            "from \"users\" as \"__table-1\" "
-           "join ("
+           "inner join ("
                "select "
                    "\"__table-0\".\"author\","
                    "count(\"__table-0\".\"author\") "
@@ -418,6 +418,39 @@ transform_fun_test() ->
     {Sql, Args} = qast:to_sql(TFun(3)),
     ?assertEqual(<<"not ($1 = $2)">>, Sql),
     ?assertEqual([3,2], Args).
+
+join_type_test_() ->
+    Q = q:from(?USER_SCHEMA),
+    JFun = fun([#{id := UserId}, #{author := AuthorId}]) ->
+        pg:'=:='(UserId, AuthorId)
+    end,
+
+    lists:map(fun({T, Exp}) ->
+        F = fun() ->
+            {Sql, []} = qast:to_sql(qsql:select(q:pipe(Q, [
+                q:join(T, ?COMMENT_SCHEMA, JFun),
+                q:select(fun([#{id := UId}, #{id := CId}]) ->
+                   #{uid => UId, cid => CId}
+                end)
+            ]))),
+            ?assertEqual(
+                 <<"select \"__table-0\".\"id\",\"__table-1\".\"id\" "
+                   "from \"users\" as \"__table-1\" ",
+                   Exp/binary, " join \"comments\" as \"__table-0\" on "
+                   "(\"__table-1\".\"id\" = \"__table-0\".\"author\")">>, Sql)
+         end,
+         {Exp, F}
+    end,
+    [
+     {inner, <<"inner">>},
+     {left, <<"left">>},
+     {right, <<"right">>},
+     {full, <<"full">>},
+     {{left, outer}, <<"left outer">>},
+     {{right, outer}, <<"right outer">>},
+     {{full, outer}, <<"full outer">>}
+    ]).
+
 
 %% =============================================================================
 %% Internal functions

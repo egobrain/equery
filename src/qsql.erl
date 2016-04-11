@@ -9,6 +9,9 @@
          delete/1
         ]).
 
+
+
+-spec select(q:query()) -> qast:ast_node().
 select(#query{
             tables=Tables,
             where=Where,
@@ -40,6 +43,7 @@ select(#query{
         offset_exp(Offset)
     ], Opts).
 
+-spec insert(q:query()) -> qast:ast_node().
 insert(#query{tables=[{Table, _TRef}], select=RFields, set=Set}) ->
     {SetKeys, SetValues} = lists:unzip([
         {{K, qast:opts(V)}, V} || {K, V} <- maps:to_list(Set)
@@ -56,6 +60,7 @@ insert(#query{tables=[{Table, _TRef}], select=RFields, set=Set}) ->
         returning_exp(RFieldsList)
     ], #{type => fields_opts(RFieldsList)}).
 
+-spec update(q:query()) -> qast:ast_node().
 update(#query{tables=[{Table, TRef}], select=RFields, where=Where, set=Set}) ->
     RFieldsList = maps:to_list(RFields),
     qast:exp([
@@ -71,6 +76,7 @@ update(#query{tables=[{Table, TRef}], select=RFields, where=Where, set=Set}) ->
         returning_exp(RFieldsList)
      ], #{type => fields_opts(RFieldsList)}).
 
+-spec delete(q:query()) -> qast:ast_node().
 delete(#query{tables=[{Table, TRef}], select=RFields, where=Where}) ->
     RFieldsList = maps:to_list(RFields),
     qast:exp([
@@ -110,14 +116,22 @@ tables_exp([_|_] = Tables) ->
 
 joins_exp(Joins) ->
     qast:exp(lists:map(
-        fun({inner, JoinAst, Exp}) ->
+        fun({JoinType, JoinAst, Exp}) ->
             qast:exp([
-                qast:raw([" join "]),
+                qast:raw([" ", join_type(JoinType), " join "]),
                 JoinAst,
                 qast:raw(" on "),
                 Exp
             ])
         end, lists:reverse(Joins))).
+
+join_type(inner) -> <<"inner">>;
+join_type(left) -> <<"left">>;
+join_type(right) -> <<"right">>;
+join_type(full) -> <<"full">>;
+join_type({left, outer}) -> <<"left outer">>;
+join_type({right, outer}) -> <<"right outer">>;
+join_type({full, outer}) -> <<"full outer">>.
 
 where_exp(undefined) -> qast:raw([]);
 where_exp(WhereExp) -> qast:exp([qast:raw(" where "), WhereExp]).
