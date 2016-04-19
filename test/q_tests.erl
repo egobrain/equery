@@ -48,7 +48,7 @@ schema() -> ?USER_SCHEMA.
 
 schema_test() ->
     ?assertEqual(?USER_SCHEMA, q:get(schema, q:from(?USER_SCHEMA))),
-    ?assertEqual(?USER_SCHEMA, q:get(schema, q:from(?MODULE))).
+    ?assertEqual(?USER_SCHEMA#{model => ?MODULE}, q:get(schema, q:from(?MODULE))).
 
 data_test() ->
     ?assertEqual(
@@ -91,11 +91,11 @@ q_test() ->
            "order by \"__table-0\".\"name\" ASC,\"__table-0\".\"id\" DESC">>,
          Sql),
     ?assertEqual([<<"test1">>, <<"test2">>], Args),
-    ?assertEqual(?USER_FIELDS_LIST, Feilds).
+    ?assertEqual({model, undefined, ?USER_FIELDS_LIST}, Feilds).
 
 q_compile_test() ->
     {Sql, Args, Feilds} = to_sql(
-        qsql:select(q:pipe(q:from(?USER_SCHEMA), [
+        qsql:select(q:pipe(q:from(?MODULE), [
             q:where(
                 fun([#{name := Name}]) ->
                     Name =:= <<"test1">>
@@ -121,21 +121,21 @@ q_compile_test() ->
            "where ((\"__table-0\".\"name\" = $1) and (\"__table-1\".\"text\" = $2))">>,
          Sql),
     ?assertEqual([<<"test1">>, <<"test2">>], Args),
-    ?assertEqual(?USER_FIELDS_LIST, Feilds).
+    ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST}, Feilds).
 
 q_insert_test() ->
     {Sql, _Args, ReturningFields} = to_sql(
-        qsql:insert(q:set(fun(_) -> ?USER_FIELDS_WITHOUT([id]) end, q:from(?USER_SCHEMA)))),
+        qsql:insert(q:set(fun(_) -> ?USER_FIELDS_WITHOUT([id]) end, q:from(?MODULE)))),
     ?assertEqual(
         <<"insert into \"users\"(\"name\",\"password\",\"salt\") "
           "values ($1,$2,$3) "
           "returning \"id\",\"name\",\"password\",\"salt\"">>,
         Sql),
-    ?assertEqual(?USER_FIELDS_LIST, ReturningFields).
+    ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST}, ReturningFields).
 
 q_update_test() ->
     {Sql, Args, ReturningFields} = to_sql(
-        qsql:update(q:pipe(q:from(?USER_SCHEMA), [
+        qsql:update(q:pipe(q:from(?MODULE), [
             q:set(fun(_) -> #{name => <<"Sam">>} end),
             q:set(fun(Set, _) -> Set#{password => <<"pass">>} end),
             q:where(fun([#{id := Id}]) -> Id =:= 3 end),
@@ -148,11 +148,11 @@ q_update_test() ->
            "where (\"__table-0\".\"id\" = $3)">>,
         Sql),
     ?assertEqual([<<"Sam">>, <<"pass">>, 3], Args),
-    ?assertEqual([], ReturningFields).
+    ?assertEqual({model, ?MODULE, []}, ReturningFields).
 
 q_delete_test() ->
     {Sql, Args, ReturningFields} = to_sql(
-        qsql:delete(q:pipe(q:from(?USER_SCHEMA), [
+        qsql:delete(q:pipe(q:from(?MODULE), [
             q:where(fun([#{id := Id}]) -> Id =:= 3 end)
         ]))),
     ?assertEqual(
@@ -161,7 +161,7 @@ q_delete_test() ->
            "returning \"id\",\"name\",\"password\",\"salt\"">>,
         Sql),
     ?assertEqual([3], Args),
-    ?assertEqual(?USER_FIELDS_LIST, ReturningFields).
+    ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST}, ReturningFields).
 
 q_data_test() ->
     {Sql, Args, ReturningFields} = to_sql(
@@ -178,7 +178,7 @@ q_data_test() ->
 
 q_group_by_test() ->
     {Sql, Args, Feilds} = to_sql(
-        qsql:select(q:pipe(q:from(?USER_SCHEMA), [
+        qsql:select(q:pipe(q:from(?MODULE), [
             q:where(
                 fun([#{name := Name}]) ->
                     pg:'=:='(Name, <<"test1">>)
@@ -210,11 +210,11 @@ q_group_by_test() ->
            "group by \"__table-1\".\"author\"">>,
          Sql),
     ?assertEqual([<<"test1">>, <<"test2">>], Args),
-    ?assertEqual([{cnt, #{type => integer}}], Feilds).
+    ?assertEqual({model, ?MODULE, [{cnt, #{type => integer}}]}, Feilds).
 
 limit_offset_test() ->
     {Sql, Args, Feilds} = to_sql(
-        qsql:select(q:pipe(q:from(?USER_SCHEMA), [
+        qsql:select(q:pipe(q:from(?MODULE), [
             q:limit(10),
             q:offset(3)
         ]))),
@@ -228,11 +228,11 @@ limit_offset_test() ->
            "limit $1 "
            "offset $2">>, Sql),
     ?assertEqual([10, 3], Args),
-    ?assertEqual(?USER_FIELDS_LIST, Feilds).
+    ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST}, Feilds).
 
 complex_test() ->
     {Sql, Args, Feilds} = to_sql(
-        qsql:select(q:pipe(q:from(?USER_SCHEMA), [
+        qsql:select(q:pipe(q:from(?MODULE), [
             q:where(fun([#{name := Name}]) -> Name =:= <<"user">> end),
             q:join(
                 q:pipe(q:from(?COMMENT_SCHEMA), [
@@ -262,7 +262,7 @@ complex_test() ->
            "where (\"__table-1\".\"name\" = $1)">>,
          Sql),
     ?assertEqual([<<"user">>], Args),
-    ?assertEqual([{comments_cnt, #{type => integer}}|?USER_FIELDS_LIST([name])], Feilds).
+    ?assertEqual({model, ?MODULE, [{comments_cnt, #{type => integer}}|?USER_FIELDS_LIST([name])]}, Feilds).
 
 single_item_select_test() ->
     {Sql, Args, Type} = to_sql(
@@ -278,7 +278,7 @@ single_item_select_test() ->
 
 update_select_test() ->
     {Sql, Args, Feilds} = to_sql(
-        qsql:select(q:pipe(q:from(?USER_SCHEMA), [
+        qsql:select(q:pipe(q:from(?MODULE), [
             q:select(fun([#{id := Id}]) -> #{id => Id} end),
             q:select(fun(S, [#{name := Name}]) -> S#{name => Name} end)
         ]))),
@@ -287,11 +287,11 @@ update_select_test() ->
            "from \"users\" as \"__table-0\"">>,
          Sql),
     ?assertEqual([], Args),
-    ?assertEqual(?USER_FIELDS_LIST([id,name]), Feilds).
+    ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST([id,name])}, Feilds).
 
 operators_test() ->
     {Sql, Args, Feilds} = to_sql(
-        qsql:select(q:pipe(q:from(?USER_SCHEMA), [
+        qsql:select(q:pipe(q:from(?MODULE), [
             q:where(fun([#{id := Id}]) ->
                Id < 3 andalso
                Id =< 4 orelse
@@ -312,7 +312,7 @@ operators_test() ->
               "(((not \"__table-0\".\"id\" * $6) + $7) - ($8 / $9)))))">>,
          Sql),
     ?assertEqual([3,4,5,6,7,1,2,3,4], Args),
-    ?assertEqual(?USER_FIELDS_LIST([name]), Feilds).
+    ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST([name])}, Feilds).
 
 andalso_op_test() ->
     Node = qast:raw("a"),
@@ -378,7 +378,7 @@ ops_test_() ->
 
 row_test() ->
     {Sql, Args, ReturningFields} = to_sql(
-        qsql:select(q:pipe(q:from(?USER_SCHEMA), [
+        qsql:select(q:pipe(q:from(?MODULE), [
             q:select(fun([Tab]) -> pg:row(Tab) end)
         ]))),
     ?assertEqual(
@@ -390,7 +390,7 @@ row_test() ->
            ") from \"users\" as \"__table-0\"">>,
          Sql),
     ?assertEqual([], Args),
-    ?assertEqual({record, ?USER_FIELDS_LIST}, ReturningFields).
+    ?assertEqual({record, {model, undefined, ?USER_FIELDS_LIST}}, ReturningFields).
 
 pt_test() ->
     Path = "./test/test_m.tpl",

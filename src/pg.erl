@@ -28,7 +28,8 @@
 -export([
          min/2,
          max/2,
-         row/1
+         row/1,
+         row/2
         ]).
 
 %% =============================================================================
@@ -127,8 +128,12 @@ max(A, B) ->
 
 -spec row(#{atom() => qast:ast_node()}) -> qast:ast_node().
 row(Fields) when is_map(Fields) ->
+    row(undefined, Fields).
+
+-spec row(Model :: module(), #{atom() => qast:ast_node()}) -> qast:ast_node().
+row(Model, Fields) when is_map(Fields) ->
     FieldsList = maps:to_list(Fields),
-    Type = {record, [{F, qast:opts(Node)} || {F, Node} <- FieldsList]},
+    Type = {record, {model, Model, [{F, qast:opts(Node)} || {F, Node} <- FieldsList]}},
     qast:exp([
         qast:raw("row("),
         qast:join([Node || {_F, Node} <- FieldsList], qast:raw(",")),

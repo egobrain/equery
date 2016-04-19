@@ -210,4 +210,4 @@ data(Fun, #query{data=Data}=Q) ->
 call(Fun, Args) -> apply(equery_pt:transform_fun(Fun), Args).
 
 get_schema(Schema) when is_map(Schema) -> Schema;
-get_schema(Module) when is_atom(Module) -> Module:schema().
+get_schema(Module) when is_atom(Module) -> (Module:schema())#{model => Module}.

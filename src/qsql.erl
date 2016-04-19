@@ -14,6 +14,7 @@
 -spec select(q:query()) -> qast:ast_node().
 select(#query{
             tables=Tables,
+            schema=Schema,
             where=Where,
             select=RFields,
             joins=Joins,
@@ -25,7 +26,7 @@ select(#query{
     case is_map(RFields) of
         true ->
             RFieldsList = maps:to_list(RFields),
-            Opts = #{type => fields_opts(RFieldsList)},
+            Opts = #{type => type(Schema, RFieldsList)},
             Values = maps:values(RFields);
         false ->
             Opts = qast:opts(RFields),
@@ -44,7 +45,7 @@ select(#query{
     ], Opts).
 
 -spec insert(q:query()) -> qast:ast_node().
-insert(#query{tables=[{Table, _TRef}], select=RFields, set=Set}) ->
+insert(#query{schema=Schema, tables=[{Table, _TRef}], select=RFields, set=Set}) ->
     {SetKeys, SetValues} = lists:unzip([
         {{K, qast:opts(V)}, V} || {K, V} <- maps:to_list(Set)
     ]),
@@ -58,10 +59,10 @@ insert(#query{tables=[{Table, _TRef}], select=RFields, set=Set}) ->
         fields_exp(SetValues),
         qast:raw([")"]),
         returning_exp(RFieldsList)
-    ], #{type => fields_opts(RFieldsList)}).
+    ], #{type => type(Schema, RFieldsList)}).
 
 -spec update(q:query()) -> qast:ast_node().
-update(#query{tables=[{Table, TRef}], select=RFields, where=Where, set=Set}) ->
+update(#query{schema=Schema, tables=[{Table, TRef}], select=RFields, where=Where, set=Set}) ->
     RFieldsList = maps:to_list(RFields),
     qast:exp([
         qast:raw(["update ", equery_utils:wrap(Table), " as "]),
@@ -74,17 +75,17 @@ update(#query{tables=[{Table, TRef}], select=RFields, where=Where, set=Set}) ->
         ], qast:raw(",")),
         where_exp(Where),
         returning_exp(RFieldsList)
-     ], #{type => fields_opts(RFieldsList)}).
+     ], #{type => type(Schema, RFieldsList)}).
 
 -spec delete(q:query()) -> qast:ast_node().
-delete(#query{tables=[{Table, TRef}], select=RFields, where=Where}) ->
+delete(#query{schema=Schema, tables=[{Table, TRef}], select=RFields, where=Where}) ->
     RFieldsList = maps:to_list(RFields),
     qast:exp([
         qast:raw(["delete from ", equery_utils:wrap(Table), " as "]),
         qast:table(TRef),
         where_exp(Where),
         returning_exp(RFieldsList)
-    ], #{type => fields_opts(RFieldsList)}).
+    ], #{type => type(Schema, RFieldsList)}).
 
 %% =============================================================================
 %% Internal functions
@@ -173,5 +174,6 @@ offset_exp(Offset) ->
         qast:value(Offset, #{type => integer})
     ]).
 
-fields_opts(FieldsList) ->
-    [{F, qast:opts(Node)} || {F, Node} <- FieldsList].
+type(Schema, FieldsList) ->
+    Model = maps:get(model, Schema, undefined),
+    {model, Model, [{F, qast:opts(Node)} || {F, Node} <- FieldsList]}.
