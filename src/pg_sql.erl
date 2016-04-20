@@ -1,4 +1,4 @@
--module(pg).
+-module(pg_sql).
 
 -export([
          'andalso'/2,

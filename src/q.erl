@@ -123,7 +123,7 @@ where(Fun, #query{data=Data, where=OldWhere}=Q) ->
     NewWhere =
         case OldWhere of
             undefined -> Where;
-            _ -> pg:'andalso'(OldWhere, Where)
+            _ -> pg_sql:'andalso'(OldWhere, Where)
         end,
     Q#query{where = NewWhere}.
 

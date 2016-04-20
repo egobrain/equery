@@ -10,7 +10,7 @@
 -record(state, {}).
 
 parse_transform(Ast, _Opts) ->
-    {module, _} = code:ensure_loaded(pg),
+    {module, _} = code:ensure_loaded(pg_sql),
     {Ast2, _} = traverse(fun search_and_compile/2, undefined, Ast),
     %% ct:pal("~s", [pretty_print(Ast2)]),
     Ast2.
@@ -55,13 +55,13 @@ where_exp(Ast) ->
     {NewAst, _State} =
         traverse_(
             fun({op, _L, Op, A, B} = Node, S) ->
-                case erlang:function_exported(pg, Op, 2) of
-                    true -> {erl_syntax:revert(?apply(pg, Op, [A,B])), S};
+                case erlang:function_exported(pg_sql, Op, 2) of
+                    true -> {erl_syntax:revert(?apply(pg_sql, Op, [A,B])), S};
                     false -> {Node, S}
                 end;
                ({op, _L, Op, A} = Node, S) ->
-                case erlang:function_exported(pg, Op, 1) of
-                    true -> {erl_syntax:revert(?apply(pg, Op, [A])), S};
+                case erlang:function_exported(pg_sql, Op, 1) of
+                    true -> {erl_syntax:revert(?apply(pg_sql, Op, [A])), S};
                     false -> {Node, S}
                 end;
                (Node, S) -> {Node, S}

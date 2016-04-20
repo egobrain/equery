@@ -63,15 +63,15 @@ q_test() ->
         qsql:select(q:pipe(q:from(?USER_SCHEMA), [
             q:where(
                 fun([#{name := Name}]) ->
-                    pg:'=:='(Name, <<"test1">>)
+                    pg_sql:'=:='(Name, <<"test1">>)
                 end),
             q:join(?COMMENT_SCHEMA,
                 fun([#{id := UserId}, #{author := AuthorId}]) ->
-                    pg:'=:='(UserId, AuthorId)
+                    pg_sql:'=:='(UserId, AuthorId)
                 end),
             q:where(
                 fun([_,#{text := Name}]) ->
-                    pg:'=:='(Name, <<"test2">>)
+                    pg_sql:'=:='(Name, <<"test2">>)
                 end),
             q:order_by(
                 fun([#{name := Name, id := Id}|_]) ->
@@ -181,15 +181,15 @@ q_group_by_test() ->
         qsql:select(q:pipe(q:from(?MODULE), [
             q:where(
                 fun([#{name := Name}]) ->
-                    pg:'=:='(Name, <<"test1">>)
+                    pg_sql:'=:='(Name, <<"test1">>)
                 end),
             q:join(?COMMENT_SCHEMA,
                 fun([#{id := UserId}, #{author := AuthorId}]) ->
-                    pg:'=:='(UserId, AuthorId)
+                    pg_sql:'=:='(UserId, AuthorId)
                 end),
             q:where(
                 fun([_,#{text := Name}]) ->
-                    pg:'=:='(Name, <<"test2">>)
+                    pg_sql:'=:='(Name, <<"test2">>)
                 end),
             q:group_by(
                 fun([_, #{author := AuthorId}]) ->
@@ -197,7 +197,7 @@ q_group_by_test() ->
                 end),
             q:select(
                 fun([#{id := Id}|_]) ->
-                    #{cnt => pg:count(Id)}
+                    #{cnt => pg_sql:count(Id)}
                 end)
         ]))),
     ?assertEqual(
@@ -238,7 +238,7 @@ complex_test() ->
                 q:pipe(q:from(?COMMENT_SCHEMA), [
                     q:group_by(fun([#{author := Author}]) -> [Author] end),
                     q:select(fun([#{author := Author}]) ->
-                        #{author => Author, comments_cnt => pg:count(Author) }
+                        #{author => Author, comments_cnt => pg_sql:count(Author) }
                     end)
                 ]),
                 fun([#{id := Id}, #{author := AuthorId}]) -> Id =:= AuthorId end),
@@ -316,38 +316,38 @@ operators_test() ->
 
 andalso_op_test() ->
     Node = qast:raw("a"),
-    ?assertEqual(Node, pg:'andalso'(true, Node)),
-    ?assertEqual(Node, pg:'andalso'(Node, true)),
-    ?assertEqual(false, pg:'andalso'(false, Node)),
-    ?assertEqual(false, pg:'andalso'(Node, false)),
+    ?assertEqual(Node, pg_sql:'andalso'(true, Node)),
+    ?assertEqual(Node, pg_sql:'andalso'(Node, true)),
+    ?assertEqual(false, pg_sql:'andalso'(false, Node)),
+    ?assertEqual(false, pg_sql:'andalso'(Node, false)),
     ?assertEqual(
          {<<"(a and a)">>, []},
-         qast:to_sql(pg:'andalso'(Node, Node))).
+         qast:to_sql(pg_sql:'andalso'(Node, Node))).
 
 orelse_op_test() ->
     Node = qast:raw("b"),
-    ?assertEqual(true, pg:'orelse'(true, Node)),
-    ?assertEqual(true, pg:'orelse'(Node, true)),
-    ?assertEqual(Node, pg:'orelse'(false, Node)),
-    ?assertEqual(Node, pg:'orelse'(Node, false)),
+    ?assertEqual(true, pg_sql:'orelse'(true, Node)),
+    ?assertEqual(true, pg_sql:'orelse'(Node, true)),
+    ?assertEqual(Node, pg_sql:'orelse'(false, Node)),
+    ?assertEqual(Node, pg_sql:'orelse'(Node, false)),
     ?assertEqual(
          {<<"(b or b)">>, []},
-         qast:to_sql(pg:'orelse'(Node, Node))).
+         qast:to_sql(pg_sql:'orelse'(Node, Node))).
 
 not_op_test() ->
     Node = qast:raw("c"),
-    ?assertEqual(false, pg:'not'(true)),
-    ?assertEqual(true, pg:'not'(false)),
+    ?assertEqual(false, pg_sql:'not'(true)),
+    ?assertEqual(true, pg_sql:'not'(false)),
     ?assertEqual(
          {<<"not c">>, []},
-         qast:to_sql(pg:'not'(Node))).
+         qast:to_sql(pg_sql:'not'(Node))).
 
 aggs_test_() ->
     Tests = [
-        {fun pg:max/1, "max"},
-        {fun pg:min/1, "min"},
-        {fun pg:count/1, "count"},
-        {fun pg:sum/1, "sum"}
+        {fun pg_sql:max/1, "max"},
+        {fun pg_sql:min/1, "min"},
+        {fun pg_sql:count/1, "count"},
+        {fun pg_sql:sum/1, "sum"}
     ],
     [{R, fun() ->
         ?assertEqual(
@@ -362,8 +362,8 @@ aggs_test_() ->
 
 ops_test_() ->
     Tests = [
-        {fun pg:max/2, "GREATEST"},
-        {fun pg:min/2, "LEAST"}
+        {fun pg_sql:max/2, "GREATEST"},
+        {fun pg_sql:min/2, "LEAST"}
     ],
     [{R, fun() ->
         ?assertEqual(
@@ -379,7 +379,7 @@ ops_test_() ->
 row_test() ->
     {Sql, Args, ReturningFields} = to_sql(
         qsql:select(q:pipe(q:from(?MODULE), [
-            q:select(fun([Tab]) -> pg:row(Tab) end)
+            q:select(fun([Tab]) -> pg_sql:row(Tab) end)
         ]))),
     ?assertEqual(
          <<"select row("
@@ -422,7 +422,7 @@ transform_fun_test() ->
 join_type_test_() ->
     Q = q:from(?USER_SCHEMA),
     JFun = fun([#{id := UserId}, #{author := AuthorId}]) ->
-        pg:'=:='(UserId, AuthorId)
+        pg_sql:'=:='(UserId, AuthorId)
     end,
 
     lists:map(fun({T, Exp}) ->
