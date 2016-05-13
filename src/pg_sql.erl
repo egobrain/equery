@@ -32,6 +32,10 @@
          row/2
         ]).
 
+-export([
+         in/2
+        ]).
+
 %% =============================================================================
 %% Sql operations
 %% =============================================================================
@@ -126,6 +130,8 @@ min(A, B) ->
 max(A, B) ->
     qast:exp([qast:raw("GREATEST("), A, qast:raw(","), B, qast:raw(")")], qast:opts(A)).
 
+%% = Additional oprterations ===================================================
+
 -spec row(#{atom() => qast:ast_node()}) -> qast:ast_node().
 row(Fields) when is_map(Fields) ->
     row(undefined, Fields).
@@ -139,3 +145,6 @@ row(Model, Fields) when is_map(Fields) ->
         qast:join([Node || {_F, Node} <- FieldsList], qast:raw(",")),
         qast:raw(")")
     ], #{type => Type}).
+
+in(A, B) ->
+    qast:exp([A, qast:raw(" = ANY("), B, qast:raw(")")]).

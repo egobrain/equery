@@ -313,7 +313,8 @@ operators_test() ->
                Id > 5 andalso
                Id >= 6 orelse
                Id =/= 7 andalso
-               not Id * 1 + 2 - 3 / 4
+               not Id * 1 + 2 - 3 / 4 orelse
+               pg_sql:in(Id, [8,9,10])
             end),
             q:select(fun([T]) -> maps:with([name], T) end)
         ]))),
@@ -323,10 +324,11 @@ operators_test() ->
               "(\"__table-0\".\"id\" <= $2)) or "
               "(((\"__table-0\".\"id\" > $3) and "
               "(\"__table-0\".\"id\" >= $4)) or "
-              "(not (\"__table-0\".\"id\" = $5) and "
-              "(((not \"__table-0\".\"id\" * $6) + $7) - ($8 / $9)))))">>,
+              "((not (\"__table-0\".\"id\" = $5) and "
+              "(((not \"__table-0\".\"id\" * $6) + $7) - ($8 / $9))) or "
+              "\"__table-0\".\"id\" = ANY($10))))">>,
          Sql),
-    ?assertEqual([3,4,5,6,7,1,2,3,4], Args),
+    ?assertEqual([3,4,5,6,7,1,2,3,4,[8,9,10]], Args),
     ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST([name])}, Feilds).
 
 andalso_op_test() ->
@@ -406,6 +408,23 @@ row_test() ->
          Sql),
     ?assertEqual([], Args),
     ?assertEqual({record, {model, undefined, ?USER_FIELDS_LIST}}, ReturningFields).
+
+in_test() ->
+    {Sql, Args, ReturningFields} = to_sql(
+        qsql:select(q:pipe(q:from(?MODULE), [
+            q:where(fun([#{id := Id}]) -> pg_sql:in(Id, [1,2]) end)
+        ]))),
+    ?assertEqual(
+         <<"select "
+           "\"__table-0\".\"id\","
+           "\"__table-0\".\"name\","
+           "\"__table-0\".\"password\","
+           "\"__table-0\".\"salt\""
+           " from \"users\" as \"__table-0\""
+           " where \"__table-0\".\"id\" = ANY($1)">>,
+         Sql),
+    ?assertEqual([[1,2]], Args),
+    ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST}, ReturningFields).
 
 pt_test() ->
     Path = "./test/test_m.tpl",
