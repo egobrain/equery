@@ -6,6 +6,7 @@
          select/1,
          insert/1,
          update/1,
+         upsert/1,
          delete/1
         ]).
 
@@ -76,6 +77,37 @@ update(#query{schema=Schema, tables=[{Table, TRef}], select=RFields, where=Where
         where_exp(Where),
         returning_exp(RFieldsList)
      ], #{type => type(Schema, RFieldsList)}).
+
+-spec upsert(q:query()) -> qast:ast_node().
+upsert(#query{schema=#{fields := Fields}=Schema, tables=[{Table, _TRef}], select=RFields, set=Set}) ->
+    IndexFields = maps:fold(fun(F, Opts, Acc) ->
+        case maps:get(index, Opts, false) of
+            true -> [{F, Opts}|Acc];
+            false -> Acc
+        end
+    end, [], Fields),
+    {SetKeys, SetValues} = lists:unzip([
+        {{K, qast:opts(V)}, V} || {K, V} <- maps:to_list(Set)
+    ]),
+    RFieldsList = maps:to_list(RFields),
+    qast:exp([
+        qast:raw(["insert into ", equery_utils:wrap(Table), "("]),
+        fields_exp([
+            qast:exp([qast:raw(equery_utils:field_name(F))], Opts) || {F, Opts} <- SetKeys
+        ]),
+        qast:raw([") values ("]),
+        fields_exp(SetValues),
+        qast:raw([") on conflict ("]),
+        fields_exp([
+            qast:exp([qast:raw(equery_utils:field_name(F))], Opts) || {F, Opts} <- IndexFields
+        ]),
+        qast:raw([") do update set "]),
+        fields_exp([
+            qast:raw([equery_utils:field_name(F), " = EXCLUDED.", equery_utils:field_name(F)])
+            || {F, _Opts} <- SetKeys
+        ]),
+        returning_exp(RFieldsList)
+    ], #{type => type(Schema, RFieldsList)}).
 
 -spec delete(q:query()) -> qast:ast_node().
 delete(#query{schema=Schema, tables=[{Table, TRef}], select=RFields, where=Where}) ->

@@ -7,7 +7,7 @@
 
 -define(USER_SCHEMA, #{
         fields => #{
-            id => #{ type => serial },
+            id => #{ type => serial, index => true },
             name => #{type => {varchar, 60}, required => true},
             password => #{type => {varchar, 60}, required => true},
             salt => #{type => {varchar, 24}, required => true}
@@ -129,6 +129,21 @@ q_insert_test() ->
     ?assertEqual(
         <<"insert into \"users\"(\"name\",\"password\",\"salt\") "
           "values ($1,$2,$3) "
+          "returning \"id\",\"name\",\"password\",\"salt\"">>,
+        Sql),
+    ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST}, ReturningFields).
+
+q_upsert_test() ->
+    {Sql, _Args, ReturningFields} = to_sql(
+        qsql:upsert(q:set(fun(_) -> ?USER_FIELDS end, q:from(?MODULE)))),
+    ?assertEqual(
+        <<"insert into \"users\"(\"id\",\"name\",\"password\",\"salt\") "
+          "values ($1,$2,$3,$4) "
+          "on conflict (\"id\") do update set "
+          "\"id\" = EXCLUDED.\"id\","
+          "\"name\" = EXCLUDED.\"name\","
+          "\"password\" = EXCLUDED.\"password\","
+          "\"salt\" = EXCLUDED.\"salt\" "
           "returning \"id\",\"name\",\"password\",\"salt\"">>,
         Sql),
     ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST}, ReturningFields).
