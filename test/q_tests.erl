@@ -426,6 +426,23 @@ in_test() ->
     ?assertEqual([[1,2]], Args),
     ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST}, ReturningFields).
 
+'@>_test'() ->
+    {Sql, Args, ReturningFields} = to_sql(
+        qsql:select(q:pipe(q:from(?MODULE), [
+            q:where(fun([#{id := Id}]) -> pg_sql:'@>'(Id, [1,2]) end)
+        ]))),
+    ?assertEqual(
+         <<"select "
+           "\"__table-0\".\"id\","
+           "\"__table-0\".\"name\","
+           "\"__table-0\".\"password\","
+           "\"__table-0\".\"salt\""
+           " from \"users\" as \"__table-0\""
+           " where \"__table-0\".\"id\" @> $1">>,
+         Sql),
+    ?assertEqual([[1,2]], Args),
+    ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST}, ReturningFields).
+
 pt_test() ->
     Path = "./test/test_m.tpl",
     {ok, Bin} = file:read_file(Path),
