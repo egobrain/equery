@@ -96,9 +96,13 @@ q_test() ->
 q_compile_test() ->
     {Sql, Args, Feilds} = to_sql(
         qsql:select(q:pipe(q:from(?MODULE), [
+            q:data(
+                fun([#{name := Name}=TD]) ->
+                    [TD#{filter => Name =:= <<"test1">>}]
+                end),
             q:where(
-                fun([#{name := Name}]) ->
-                    Name =:= <<"test1">>
+                fun([#{name := Name, filter := F}]) ->
+                    Name =:= <<"test2">> orelse F
                 end),
             q:join(?COMMENT_SCHEMA,
                 fun([#{id := UserId}, #{author := AuthorId}]) ->
@@ -107,21 +111,33 @@ q_compile_test() ->
             q:where(
                 fun([_,#{text := Name}]) ->
                     Name =:= <<"test2">>
+                end),
+            q:select(
+                fun([#{id := Id}=U|_]) ->
+                    U#{'_id_gt' => Id > 3}
                 end)
         ]))),
     ?assertEqual(
          <<"select "
+           "(\"__table-0\".\"id\" > $1),"
+           "(\"__table-0\".\"name\" = $2),"
            "\"__table-0\".\"id\","
            "\"__table-0\".\"name\","
            "\"__table-0\".\"password\","
            "\"__table-0\".\"salt\" "
            "from \"users\" as \"__table-0\" "
-           "inner join \"comments\" as \"__table-1\" "
-           "on (\"__table-0\".\"id\" = \"__table-1\".\"author\") "
-           "where ((\"__table-0\".\"name\" = $1) and (\"__table-1\".\"text\" = $2))">>,
+           "inner join \"comments\" as \"__table-1\" on "
+           "(\"__table-0\".\"id\" = \"__table-1\".\"author\") where "
+           "(((\"__table-0\".\"name\" = $3) or "
+           "(\"__table-0\".\"name\" = $4)) and "
+           "(\"__table-1\".\"text\" = $5))">>,
          Sql),
-    ?assertEqual([<<"test1">>, <<"test2">>], Args),
-    ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST}, Feilds).
+    ?assertEqual([3,<<"test1">>,<<"test2">>,<<"test1">>,<<"test2">>], Args),
+    ?assertEqual({model, ?MODULE, [
+        {'_id_gt',#{type => boolean}},
+        {filter,#{type => boolean}}
+        | ?USER_FIELDS_LIST
+    ]}, Feilds).
 
 q_insert_test() ->
     {Sql, _Args, ReturningFields} = to_sql(

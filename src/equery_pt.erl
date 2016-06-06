@@ -28,9 +28,15 @@ traverse(_Fun, State, Node) ->
     {Node, State}.
 
 search_and_compile({call, _, {remote, _, {atom, _, q}, {atom, _, F}}, Args}=Node, St) when
-      F =:= where;
+      F =:= compile;
+      F =:= data;
+      F =:= set;
+      F =:= group_by;
       F =:= join;
-      F =:= compile ->
+      F =:= order_by;
+      F =:= select;
+      F =:= where
+       ->
     {ArgsNode, St2} = lists:mapfoldl(
         fun({'fun', L, {clauses, Clauses}}, S) ->
                 {Node2, S2} = compile(Clauses, S),
