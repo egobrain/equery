@@ -330,7 +330,8 @@ operators_test() ->
                Id >= 6 orelse
                Id =/= 7 andalso
                not Id * 1 + 2 - 3 / 4 orelse
-               pg_sql:in(Id, [8,9,10])
+               pg_sql:in(Id, [8,9,10]) orelse
+               pg_sql:like(Id, <<"11%">>)
             end),
             q:select(fun([T]) -> maps:with([name], T) end)
         ]))),
@@ -342,9 +343,10 @@ operators_test() ->
               "(\"__table-0\".\"id\" >= $4)) or "
               "((not (\"__table-0\".\"id\" = $5) and "
               "(((not \"__table-0\".\"id\" * $6) + $7) - ($8 / $9))) or "
-              "\"__table-0\".\"id\" = ANY($10))))">>,
+              "(\"__table-0\".\"id\" = ANY($10) or "
+              "\"__table-0\".\"id\" like $11))))">>,
          Sql),
-    ?assertEqual([3,4,5,6,7,1,2,3,4,[8,9,10]], Args),
+    ?assertEqual([3,4,5,6,7,1,2,3,4,[8,9,10],<<"11%">>], Args),
     ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST([name])}, Feilds).
 
 andalso_op_test() ->

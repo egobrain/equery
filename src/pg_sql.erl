@@ -33,13 +33,14 @@
         ]).
 
 -export([
-         in/2
+         in/2,
+         like/2
         ]).
 
 %% Array functions
 -export([
          '@>'/2
-        ]). 
+        ]).
 %% =============================================================================
 %% Sql operations
 %% =============================================================================
@@ -134,7 +135,7 @@ min(A, B) ->
 max(A, B) ->
     qast:exp([qast:raw("GREATEST("), A, qast:raw(","), B, qast:raw(")")], qast:opts(A)).
 
-%% = Additional oprterations ===================================================
+%% = Additional operations =====================================================
 
 -spec row(#{atom() => qast:ast_node()}) -> qast:ast_node().
 row(Fields) when is_map(Fields) ->
@@ -152,6 +153,9 @@ row(Model, Fields) when is_map(Fields) ->
 
 in(A, B) ->
     qast:exp([A, qast:raw(" = ANY("), B, qast:raw(")")]).
+
+like(A, B) ->
+    qast:exp([A, qast:raw(" like "), B]).
 
 %% = Array oprterations ========================================================
 
