@@ -29,7 +29,8 @@
          sum/1,
          count/1,
          min/1,
-         max/1
+         max/1,
+         distinct/1
         ]).
 
 -export([
@@ -151,6 +152,9 @@ min(A) ->
 -spec 'max'(value()) -> qast:ast_node().
 max(A) ->
     qast:exp([qast:raw("max("), A, qast:raw(")")], qast:opts(A)).
+
+distinct(A) ->
+    qast:exp([qast:raw("distinct ("), A, qast:raw(")")], qast:opts(A)).
 
 %% = Math ======================================================================
 

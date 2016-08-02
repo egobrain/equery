@@ -355,6 +355,21 @@ operators_test() ->
     ?assertEqual([3,4,5,6,7,1,2,3,4,[8,9,10],<<"11%">>,<<"11%">>,<<"a">>,<<"A">>], Args),
     ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST([name])}, Feilds).
 
+distinct_operation_test() ->
+    {Sql, Args, Feilds} = to_sql(
+        qsql:select(q:pipe(q:from(?MODULE), [
+            q:group_by(fun([#{name := Name}]) -> [Name] end),
+            q:select(fun([#{id := Id}]) ->
+                pg_sql:distinct(Id)
+            end)
+        ]))),
+    ?assertEqual(
+            <<"select distinct (\"__table-0\".\"id\") from \"users\" as \"__table-0\" "
+              "group by \"__table-0\".\"name\"">>,
+         Sql),
+    ?assertEqual([], Args),
+    ?assertEqual(integer, Feilds).
+
 andalso_op_test() ->
     Node = qast:raw("a"),
     ?assertEqual(Node, pg_sql:'andalso'(true, Node)),
