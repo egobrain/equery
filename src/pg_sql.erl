@@ -19,6 +19,13 @@
         ]).
 
 -export([
+         '~'/2,
+         '~*'/2,
+         like/2,
+         ilike/2
+        ]).
+
+-export([
          sum/1,
          count/1,
          min/1,
@@ -33,8 +40,7 @@
         ]).
 
 -export([
-         in/2,
-         like/2
+         in/2
         ]).
 
 %% Array functions
@@ -114,6 +120,20 @@
 '/'(A, B) ->
     qast:exp([qast:raw("("), A, qast:raw(" / "), B, qast:raw(")")]).
 
+%% = LIKE ======================================================================
+
+-spec '~'(value(), value()) -> qast:ast_node().
+'~'(A, B) ->
+    qast:exp([qast:raw("("), A, qast:raw(" ~ "), B, qast:raw(")")], #{type => boolean}).
+-spec '~*'(value(), value()) -> qast:ast_node().
+'~*'(A, B) ->
+    qast:exp([qast:raw("("), A, qast:raw(" ~* "), B, qast:raw(")")], #{type => boolean}).
+like(A, B) ->
+    qast:exp([A, qast:raw(" like "), B]).
+ilike(A, B) ->
+    qast:exp([A, qast:raw(" ilike "), B]).
+
+
 %% = Aggregators ===============================================================
 
 -spec sum(qast:ast_node()) -> qast:ast_node().
@@ -160,9 +180,6 @@ row(Model, Fields) when is_map(Fields) ->
 
 in(A, B) ->
     qast:exp([A, qast:raw(" = ANY("), B, qast:raw(")")]).
-
-like(A, B) ->
-    qast:exp([A, qast:raw(" like "), B]).
 
 %% = Array oprterations ========================================================
 
