@@ -41,6 +41,7 @@
         ]).
 
 -export([
+         coalesce/1,
          in/2
         ]).
 
@@ -181,6 +182,13 @@ row(Model, Fields) when is_map(Fields) ->
         qast:join([Node || {_F, Node} <- FieldsList], qast:raw(",")),
         qast:raw(")")
     ], #{type => Type}).
+
+coalesce([H|_]=List) ->
+    qast:exp([
+        qast:raw("coalesce("),
+        qast:join([Node || Node <- List], qast:raw(",")),
+        qast:raw(")")
+    ], #{type => maps:get(type, qast:opts(H))}).
 
 in(A, B) ->
     qast:exp([A, qast:raw(" = ANY("), B, qast:raw(")")]).
