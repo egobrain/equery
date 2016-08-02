@@ -7,7 +7,7 @@
 
 -define(USER_SCHEMA, #{
         fields => #{
-            id => #{ type => serial, index => true },
+            id => #{ type => integer, index => true, autoincrement => true },
             name => #{type => {varchar, 60}, required => true},
             password => #{type => {varchar, 60}, required => true},
             salt => #{type => {varchar, 24}, required => true}
@@ -520,6 +520,28 @@ join_type_test_() ->
      {{full, outer}, <<"full outer">>}
     ]).
 
+
+as_test() ->
+    {Sql, Args, Type} = to_sql(
+        qsql:select(q:pipe(q:from(?USER_SCHEMA), [
+            q:select(fun([#{id := Id}]) -> pg_sql:as(Id, text) end)
+        ]))),
+    ?assertEqual(
+         <<"select (\"__table-0\".\"id\")::text from \"users\" as \"__table-0\"">>,
+         Sql),
+    ?assertEqual([], Args),
+    ?assertEqual(text, Type).
+
+set_type_test() ->
+    {Sql, Args, Type} = to_sql(
+        qsql:select(q:pipe(q:from(?USER_SCHEMA), [
+            q:select(fun([#{id := Id}]) -> pg_sql:set_type(Id, text) end)
+        ]))),
+    ?assertEqual(
+         <<"select \"__table-0\".\"id\" from \"users\" as \"__table-0\"">>,
+         Sql),
+    ?assertEqual([], Args),
+    ?assertEqual(text, Type).
 
 %% =============================================================================
 %% Internal functions

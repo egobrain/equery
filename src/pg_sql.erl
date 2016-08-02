@@ -41,6 +41,13 @@
 -export([
          '@>'/2
         ]).
+
+%% Type function
+-export([
+         as/2,
+         set_type/2
+        ]).
+
 %% =============================================================================
 %% Sql operations
 %% =============================================================================
@@ -161,3 +168,38 @@ like(A, B) ->
 
 '@>'(A, B) ->
     qast:exp([A, qast:raw(" @> "), B], qast:opts(A)).
+
+%% = Type functions ============================================================
+
+as(Ast, Type) ->
+    Opts = qast:opts(Ast),
+    qast:exp([
+        qast:raw("("), Ast, qast:raw(")::"),
+        qast:raw(type_str(Type))
+    ], Opts#{type => Type}).
+
+set_type(Ast, Type) ->
+    Opts = qast:opts(Ast),
+    qast:set_opts(Ast, Opts#{type => Type}).
+
+type_str(Atom) when is_atom(Atom) ->
+    atom_to_binary(Atom, latin1);
+type_str({array, Atom}) when is_atom(Atom) ->
+    iolist_to_binary([type_str(Atom), "[]"]);
+type_str({Type, Args}) when Type =/= array ->
+    iolist_to_binary([
+        to_iodata(Type),
+        "(", join([to_iodata(A) || A <- Args], ","), ")"
+    ]).
+
+to_iodata(Atom) when is_atom(Atom) ->
+    atom_to_list(Atom);
+to_iodata(D) when is_list(D); is_binary(D) ->
+    D;
+to_iodata(Int) when is_integer(Int) ->
+    integer_to_list(Int);
+to_iodata(Float) when is_float(Float) ->
+    io_lib:format("~p", [Float]).
+
+join([], _) -> [];
+join([H|T],Sep) -> [H|[[Sep,E]||E<-T]].
