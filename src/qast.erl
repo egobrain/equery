@@ -44,8 +44,8 @@ field(TableRef, Name, Opts) ->
 value(V) -> value(V, #{}).
 value(V, Opts) -> {'$value', Opts, V}.
 
--spec exp([ast_node()]) -> exp().
--spec exp([ast_node()], opts()) -> exp().
+-spec exp([ast_node() | any()]) -> exp().
+-spec exp([ast_node() | any()], opts()) -> exp().
 exp(V) -> exp(V, #{}).
 exp(V, Opts) -> {'$exp', Opts, V}.
 
