@@ -36,6 +36,9 @@
         }
     }).
 
+-define(TREE_FIELDS, maps:get(fields, tree_m:schema())).
+-define(TREE_FIELDS_LIST, maps:to_list(?TREE_FIELDS)).
+
 -define(COMMENT_FIELDS, maps:get(fields, ?COMMENT_SCHEMA)).
 -define(COMMENT_FIELDS_LIST, maps:to_list(?COMMENT_FIELDS)).
 -define(COMMENT_FIELDS_LIST_WITHOUT(L), maps:to_list(maps:without(L, ?COMMENT_FIELDS))).
@@ -582,6 +585,33 @@ set_type_test() ->
          Sql),
     ?assertEqual([], Args),
     ?assertEqual(text, Type).
+
+recursive_test() ->
+    {Sql, Args, Type} = to_sql(
+        qsql:select(
+            q:recursive(
+                q:where(fun([#{id := Id}]) -> Id =:= 1 end, q:from(tree_m)),
+                fun(Q) ->
+                    q:select(fun([_, T]) -> T end,
+                        (q:join(tree_m, fun([#{id := Id}, #{parentId := PId}]) -> Id =:= PId end))(Q))
+                end))),
+    ?assertEqual(
+         <<"with recursive \"__table-0\" as ("
+               "select \"__table-1\".\"id\","
+                      "\"__table-1\".\"parentId\","
+                      "\"__table-1\".\"value\" "
+               "from \"tree\" as \"__table-1\" where (\"__table-1\".\"id\" = $1) "
+               "union all "
+               "select \"__table-2\".\"id\","
+                      "\"__table-2\".\"parentId\","
+                      "\"__table-2\".\"value\" "
+               "from \"__table-0\" "
+               "inner join \"tree\" as \"__table-2\" "
+               "on (\"__table-0\".\"id\" = \"__table-2\".\"parentId\")"
+           ") select \"__table-0\".\"id\",\"__table-0\".\"parentId\",\"__table-0\".\"value\" from \"__table-0\"">>,
+         Sql),
+    ?assertEqual([1], Args),
+    ?assertEqual({model, tree_m, ?TREE_FIELDS_LIST}, Type).
 
 %% =============================================================================
 %% Internal functions

@@ -11,6 +11,7 @@
 
 -export([
          from/1,
+         recursive/2,
          join/2, join/3, join/4,
          where/1, where/2,
          select/1, select/2,
@@ -71,8 +72,38 @@ from(Info) when is_map(Info); is_atom(Info) ->
         schema = Schema,
         data=[Fields],
         select=Fields,
-        tables=[{Table, TRef}]
+        tables=[{real, equery_utils:wrap(Table), TRef}]
     }.
+
+%% = Recursive =================================================================
+
+recursive(#query{select=RFields}=BaseQuery, UnionFun) when is_map(RFields) ->
+    Schema = ?MODULE:get(schema, BaseQuery),
+    TRef = make_ref(),
+    Fields = maps:map(
+        fun(_N, Ast) -> qast:opts(Ast) end,
+        RFields),
+    FieldsExp = maps:map(
+        fun(N, Opts) -> qast:field(TRef, N, Opts)
+    end, Fields),
+    InternalQ = #query{
+        schema = (maps:with([model], Schema))#{
+            fields => Fields
+        },
+        data = [FieldsExp],
+        select = FieldsExp,
+        tables = [{alias, TRef}]
+    },
+    WithExpression = qast:exp([
+        qast:raw("with recursive "),
+        qast:table(TRef),
+        qast:raw(" as ("),
+        qsql:select(BaseQuery),
+        qast:raw(" union all "),
+        qsql:select(call(UnionFun, [InternalQ])),
+        qast:raw(") ")
+    ]),
+    InternalQ#query{with=WithExpression}.
 
 -spec join(model() | query(), fun((data()) -> qast:ast_node())) -> qfun().
 join(Info, Fun) ->

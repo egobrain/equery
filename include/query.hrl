@@ -1,5 +1,6 @@
 -record(query, {
             schema :: q:schema(),
+            with = undefined,
             where :: qast:ast_node() | undefined,
             data = []:: q:data(),
             select = #{} :: q:select(),
