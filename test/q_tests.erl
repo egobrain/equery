@@ -449,6 +449,25 @@ row_test() ->
     ?assertEqual({record, {model, undefined, ?USER_FIELDS_LIST}}, ReturningFields).
 
 in_test() ->
+    {Sql, Args, Feilds} = to_sql(
+        qsql:select(q:pipe(q:from(?MODULE), [
+            q:where(fun([#{id := Id}]) ->
+                pg_sql:in(Id, q:pipe(q:from(?MODULE), [
+                    q:select(fun([#{id := IId}]) -> pg_sql:max(IId) end)
+                ]))
+            end),
+            q:select(fun([T]) -> maps:with([name], T) end)
+        ]))),
+    ?assertEqual(
+            <<"select \"__table-0\".\"name\" from \"users\" as \"__table-0\" where "
+              "\"__table-0\".\"id\" in ("
+                  "select max(\"__table-1\".\"id\") from \"users\" as \"__table-1\""
+              ")">>,
+         Sql),
+    ?assertEqual([], Args),
+    ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST([name])}, Feilds).
+
+in_query_test() ->
     {Sql, Args, ReturningFields} = to_sql(
         qsql:select(q:pipe(q:from(?MODULE), [
             q:where(fun([#{id := Id}]) -> pg_sql:in(Id, [1,2]) end)

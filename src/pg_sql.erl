@@ -1,5 +1,7 @@
 -module(pg_sql).
 
+-include("query.hrl").
+
 -export([
          'andalso'/2,
          'orelse'/2,
@@ -190,7 +192,9 @@ coalesce([H|_]=List) ->
         qast:raw(")")
     ], #{type => maps:get(type, qast:opts(H))}).
 
-in(A, B) ->
+in(A, #query{}=Q) ->
+    qast:exp([A, qast:raw(" in ("), qsql:select(Q), qast:raw(")")]);
+in(A, B) when is_list(B) ->
     qast:exp([A, qast:raw(" = ANY("), B, qast:raw(")")]).
 
 %% = Array oprterations ========================================================
