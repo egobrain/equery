@@ -134,8 +134,8 @@ returning_exp(Fields) ->
     qast:exp([
         qast:raw(" returning "),
         fields_exp([
-            qast:exp([qast:raw(equery_utils:field_name(F))], Opts)
-            || {F, Opts} <- Fields
+            qast:exp([qast:raw(equery_utils:field_name(F))], qast:opts(Exp))
+            || {F, Exp} <- Fields
         ])
     ]).
 

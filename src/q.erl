@@ -25,7 +25,7 @@
 
 -type model() :: schema() | module().
 -type query() :: #query{}.
--type schema() :: #{}.
+-type schema() :: #{fields => #{atom() => #{}}, table => binary()}.
 -type data() :: [#{}].
 -type select() :: #{atom() => qast:ast_node()} | qast:ast_node().
 -type set() :: #{atom() => qast:ast_node()}.

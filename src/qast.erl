@@ -21,7 +21,7 @@
 %% Types
 %% =============================================================================
 
--type opts() :: #{}.
+-type opts() :: #{type => term(), any() => any()}.
 -type raw() :: {'$raw', opts(), iodata()}.
 -type value() :: {'$value', opts(), any()}.
 -type table() :: {'$table', reference()}.
