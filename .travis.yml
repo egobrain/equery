@@ -4,6 +4,7 @@ before_install:
 install: "true"
 language: erlang
 otp_release:
+  - 19.0
   - 18.2.1
   - 17.5
 script:
