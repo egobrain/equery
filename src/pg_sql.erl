@@ -135,9 +135,9 @@
 '~*'(A, B) ->
     qast:exp([qast:raw("("), A, qast:raw(" ~* "), B, qast:raw(")")], #{type => boolean}).
 like(A, B) ->
-    qast:exp([A, qast:raw(" like "), B]).
+    qast:exp([A, qast:raw(" like "), B], #{type => boolean}).
 ilike(A, B) ->
-    qast:exp([A, qast:raw(" ilike "), B]).
+    qast:exp([A, qast:raw(" ilike "), B], #{type => boolean}).
 
 is_null(A) ->
     qast:exp([A, qast:raw(" is null")], #{type => boolean}).
@@ -197,14 +197,14 @@ coalesce([H|_]=List) ->
     ], #{type => maps:get(type, qast:opts(H))}).
 
 in(A, #query{}=Q) ->
-    qast:exp([A, qast:raw(" in ("), qsql:select(Q), qast:raw(")")]);
+    qast:exp([A, qast:raw(" in ("), qsql:select(Q), qast:raw(")")], #{type => boolean});
 in(A, B) when is_list(B) ->
-    qast:exp([A, qast:raw(" = ANY("), B, qast:raw(")")]).
+    qast:exp([A, qast:raw(" = ANY("), B, qast:raw(")")], #{type => boolean}).
 
 %% = Array oprterations ========================================================
 
 '@>'(A, B) ->
-    qast:exp([A, qast:raw(" @> "), B], qast:opts(A)).
+    qast:exp([A, qast:raw(" @> "), B], #{type => boolean}).
 
 %% = Type functions ============================================================
 
