@@ -401,6 +401,12 @@ not_op_test() ->
          {<<"not c">>, []},
          qast:to_sql(pg_sql:'not'(Node))).
 
+is_null_test() ->
+    Node = qast:raw("d"),
+    ?assertEqual(
+         {<<"d is null">>, []},
+         qast:to_sql(pg_sql:'is_null'(Node))).
+
 aggs_test_() ->
     Tests = [
         {fun pg_sql:max/1, "max"},

@@ -17,7 +17,9 @@
          '+'/2,
          '-'/2,
          '*'/2,
-         '/'/2
+         '/'/2,
+
+         is_null/1
         ]).
 
 -export([
@@ -137,6 +139,8 @@ like(A, B) ->
 ilike(A, B) ->
     qast:exp([A, qast:raw(" ilike "), B]).
 
+is_null(A) ->
+    qast:exp([A, qast:raw(" is null")], #{type => boolean}).
 
 %% = Aggregators ===============================================================
 
