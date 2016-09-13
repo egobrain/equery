@@ -407,6 +407,14 @@ is_null_test() ->
          {<<"d is null">>, []},
          qast:to_sql(pg_sql:'is_null'(Node))).
 
+coalesce_test() ->
+    Node1 = qast:raw("e"),
+    Node2 = qast:raw("f"),
+    Node3 = qast:raw("g"),
+    ?assertEqual(
+         {<<"coalesce(e,f,g)">>, []},
+         qast:to_sql(pg_sql:'coalesce'([Node1,Node2,Node3]))).
+
 aggs_test_() ->
     Tests = [
         {fun pg_sql:max/1, "max"},

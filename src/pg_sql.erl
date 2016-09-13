@@ -194,7 +194,7 @@ coalesce([H|_]=List) ->
         qast:raw("coalesce("),
         qast:join([Node || Node <- List], qast:raw(",")),
         qast:raw(")")
-    ], #{type => maps:get(type, qast:opts(H))}).
+    ], maps:with([type], qast:opts(H))).
 
 in(A, #query{}=Q) ->
     qast:exp([A, qast:raw(" in ("), qsql:select(Q), qast:raw(")")], #{type => boolean});
@@ -240,3 +240,15 @@ to_iodata(Float) when is_float(Float) ->
 
 join([], _) -> [];
 join([H|T],Sep) -> [H|[[Sep,E]||E<-T]].
+
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+
+type_str_test() ->
+    ?assertEqual(<<"bigint">>, type_str(bigint)),
+    ?assertEqual(<<"int[]">>, type_str({array, int})),
+    ?assertEqual(<<"custom()">>, type_str({custom, []})),
+    ?assertEqual(<<"custom(a,1,2.0)">>, type_str({custom, [<<"a">>, 1, 2.0]})).
+
+-endif.

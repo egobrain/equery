@@ -25,3 +25,13 @@ to_binary(Int) when is_integer(Int) ->
     integer_to_binary(Int);
 to_binary(Bin) when is_binary(Bin) ->
     Bin.
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+
+to_binary_test() ->
+    ?assertEqual(<<"atom">>, to_binary(atom)),
+    ?assertEqual(<<"123">>, to_binary(123)),
+    ?assertEqual(<<"bin">>, to_binary(<<"bin">>)).
+
+-endif.
