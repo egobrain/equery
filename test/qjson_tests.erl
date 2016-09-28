@@ -23,9 +23,9 @@ schema() ->
                 end)
         ]))),
     ?assertEqual(<<"select "
-        "\"__table-0\".\"payload\"->'name' "
+        "\"__table-0\".\"payload\" -> $1 "
         "from \"data\" as \"__table-0\"">>, Sql),
-    ?assertEqual([], Args),
+    ?assertEqual([name], Args),
     ?assertEqual(undefined, Type).
 
 '->>_test'() ->
@@ -37,9 +37,9 @@ schema() ->
                 end)
         ]))),
     ?assertEqual(<<"select "
-        "\"__table-0\".\"payload\"->>'name' "
+        "\"__table-0\".\"payload\" ->> $1 "
         "from \"data\" as \"__table-0\"">>, Sql),
-    ?assertEqual([], Args),
+    ?assertEqual([name], Args),
     ?assertEqual(text, Type).
 
 '#>_test'() ->
@@ -51,9 +51,9 @@ schema() ->
                 end)
         ]))),
     ?assertEqual(<<"select "
-        "\"__table-0\".\"payload\"#>'{emails,1}' "
+        "\"__table-0\".\"payload\" #> $1 "
         "from \"data\" as \"__table-0\"">>, Sql),
-    ?assertEqual([], Args),
+    ?assertEqual([[emails, 1]], Args),
     ?assertEqual(undefined, Type).
 
 '#>>_test'() ->
@@ -65,10 +65,81 @@ schema() ->
                 end)
         ]))),
     ?assertEqual(<<"select "
-        "\"__table-0\".\"payload\"#>>'{emails,1}' "
+        "\"__table-0\".\"payload\" #>> $1 "
         "from \"data\" as \"__table-0\"">>, Sql),
-    ?assertEqual([], Args),
+    ?assertEqual([[emails, 1]], Args),
     ?assertEqual(text, Type).
+
+'@>_test'() ->
+    {Sql, Args, Type} = to_sql(
+        qsql:select(q:pipe(q:from(?MODULE), [
+            q:select(
+                fun([#{payload := Payload}|_]) ->
+                    qjson:'@>'(Payload, <<"{\"a\":1}">>)
+                end)
+        ]))),
+    ?assertEqual(<<"select "
+        "\"__table-0\".\"payload\" @> $1 "
+        "from \"data\" as \"__table-0\"">>, Sql),
+    ?assertEqual([<<"{\"a\":1}">>], Args),
+    ?assertEqual(boolean, Type).
+
+'<@_test'() ->
+    {Sql, Args, Type} = to_sql(
+        qsql:select(q:pipe(q:from(?MODULE), [
+            q:select(
+                fun([#{payload := Payload}|_]) ->
+                    qjson:'<@'(Payload, <<"{\"a\":1}">>)
+                end)
+        ]))),
+    ?assertEqual(<<"select "
+        "\"__table-0\".\"payload\" <@ $1 "
+        "from \"data\" as \"__table-0\"">>, Sql),
+    ?assertEqual([<<"{\"a\":1}">>], Args),
+    ?assertEqual(boolean, Type).
+
+'?_test'() ->
+    {Sql, Args, Type} = to_sql(
+        qsql:select(q:pipe(q:from(?MODULE), [
+            q:select(
+                fun([#{payload := Payload}|_]) ->
+                    qjson:'?'(Payload, 1)
+                end)
+        ]))),
+    ?assertEqual(<<"select "
+        "\"__table-0\".\"payload\" ? $1 "
+        "from \"data\" as \"__table-0\"">>, Sql),
+    ?assertEqual([1], Args),
+    ?assertEqual(boolean, Type).
+
+
+'?|_test'() ->
+    {Sql, Args, Type} = to_sql(
+        qsql:select(q:pipe(q:from(?MODULE), [
+            q:select(
+                fun([#{payload := Payload}|_]) ->
+                    qjson:'?|'(Payload, [1, 2])
+                end)
+        ]))),
+    ?assertEqual(<<"select "
+        "\"__table-0\".\"payload\" ?| $1 "
+        "from \"data\" as \"__table-0\"">>, Sql),
+    ?assertEqual([[1, 2]], Args),
+    ?assertEqual(boolean, Type).
+
+'?&_test'() ->
+    {Sql, Args, Type} = to_sql(
+        qsql:select(q:pipe(q:from(?MODULE), [
+            q:select(
+                fun([#{payload := Payload}|_]) ->
+                    qjson:'?&'(Payload, [1, 2])
+                end)
+        ]))),
+    ?assertEqual(<<"select "
+        "\"__table-0\".\"payload\" ?& $1 "
+        "from \"data\" as \"__table-0\"">>, Sql),
+    ?assertEqual([[1, 2]], Args),
+    ?assertEqual(boolean, Type).
 
 to_sql(QAst) ->
     {Sql, Args} = qast:to_sql(QAst),

@@ -4,53 +4,59 @@
         '->'/2,
         '->>'/2,
         '#>'/2,
-        '#>>'/2
+        '#>>'/2,
+
+        '@>'/2,
+        '<@'/2,
+        '?'/2,
+        '?|'/2,
+        '?&'/2
        ]).
 
-'->'(Field, Name) when is_binary(Name); is_atom(Name) ->
+'->'(Field, Name) ->
     qast:exp([
-        Field,
-        qast:raw("->"),
-        qast:raw(
-            equery_utils:string_wrap(
-                equery_utils:to_binary(Name)))
+        Field, qast:raw(" -> "), Name
     ], #{}).
 
-'->>'(Field, Name) when is_binary(Name); is_atom(Name) ->
+'->>'(Field, Name) ->
     qast:exp([
-        Field,
-        qast:raw("->>"),
-        qast:raw(
-            equery_utils:string_wrap(
-                equery_utils:to_binary(Name)))
+        Field, qast:raw(" ->> "), Name
     ], #{type => text}).
 
 '#>'(Field, Path) when is_list(Path) ->
     qast:exp([
-        Field,
-        qast:raw("#>"),
-            braces_string_wrap(
-                qast:join([
-                    qast:raw(equery_utils:to_binary(P)) || P <- Path
-                ], qast:raw(",")))
+        Field, qast:raw(" #> "), Path
     ], #{}).
 
 '#>>'(Field, Path) when is_list(Path) ->
     qast:exp([
-        Field,
-        qast:raw("#>>"),
-            braces_string_wrap(
-                qast:join([
-                    qast:raw(equery_utils:to_binary(P)) || P <- Path
-                ], qast:raw(",")))
+        Field, qast:raw(" #>> "), Path
     ], #{type => text}).
 
-braces_string_wrap(Ast) ->
+'@>'(Field, Obj) ->
     qast:exp([
-        qast:raw("'{"),
-        Ast,
-        qast:raw("}'")
-    ]).
+        Field, qast:raw(" @> "), Obj
+    ], #{type => boolean}).
+
+'<@'(Field, Obj) ->
+    qast:exp([
+        Field, qast:raw(" <@ "), Obj
+    ], #{type => boolean}).
+
+'?'(Field, Key) ->
+    qast:exp([
+        Field, qast:raw(" ? "), Key
+    ], #{type => boolean}).
+
+'?|'(Field, Keys) when is_list(Keys) ->
+    qast:exp([
+        Field, qast:raw(" ?| "), Keys
+    ], #{type => boolean}).
+
+'?&'(Field, Keys) ->
+    qast:exp([
+        Field, qast:raw(" ?& "), Keys
+    ], #{type => boolean}).
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
