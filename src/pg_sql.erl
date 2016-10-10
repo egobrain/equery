@@ -13,13 +13,13 @@
          '<'/2,
          '=<'/2,
          'not'/1,
+         is_null/1,
 
          '+'/2,
          '-'/2,
          '*'/2,
          '/'/2,
-
-         is_null/1
+         'abs'/1
         ]).
 
 -export([
@@ -112,6 +112,10 @@
 '=<'(A, B) ->
     qast:exp([qast:raw("("), A, qast:raw(" <= "), B, qast:raw(")")], #{type => boolean}).
 
+-spec 'is_null'(value()) -> qast:ast_node().
+is_null(A) ->
+    qast:exp([A, qast:raw(" is null")], #{type => boolean}).
+
 %% @TODO type opts
 -spec '+'(value(), value()) -> qast:ast_node().
 '+'(A, B) ->
@@ -126,6 +130,10 @@
 '/'(A, B) ->
     qast:exp([qast:raw("("), A, qast:raw(" / "), B, qast:raw(")")]).
 
+-spec 'abs'(value()) -> qast:ast_node().
+abs(A) ->
+    qast:exp([qast:raw("abs("), A, qast:raw(")")], qast:opts(A)).
+
 %% = LIKE ======================================================================
 
 -spec '~'(value(), value()) -> qast:ast_node().
@@ -138,9 +146,6 @@ like(A, B) ->
     qast:exp([A, qast:raw(" like "), B], #{type => boolean}).
 ilike(A, B) ->
     qast:exp([A, qast:raw(" ilike "), B], #{type => boolean}).
-
-is_null(A) ->
-    qast:exp([A, qast:raw(" is null")], #{type => boolean}).
 
 %% = Aggregators ===============================================================
 

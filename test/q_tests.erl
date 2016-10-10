@@ -433,6 +433,12 @@ aggs_test_() ->
                 ]))))
     end} || {F, R} <- Tests].
 
+abs_test() ->
+    Node = qast:raw("h"),
+    ?assertEqual(
+         {<<"abs(h)">>, []},
+         qast:to_sql(pg_sql:'abs'(Node))).
+
 ops_test_() ->
     Tests = [
         {fun pg_sql:max/2, "GREATEST"},
