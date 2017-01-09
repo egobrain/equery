@@ -34,7 +34,8 @@
          count/1,
          min/1,
          max/1,
-         distinct/1
+         distinct/1,
+         array_agg/1
         ]).
 
 -export([
@@ -165,8 +166,17 @@ min(A) ->
 max(A) ->
     qast:exp([qast:raw("max("), A, qast:raw(")")], qast:opts(A)).
 
+-spec 'distinct'(value()) -> qast:ast_node().
 distinct(A) ->
     qast:exp([qast:raw("distinct ("), A, qast:raw(")")], qast:opts(A)).
+
+-spec 'array_agg'(value()) -> qast:ast_node().
+array_agg(A) ->
+    Opts = case qast:opts(A) of
+        #{type := T}=O -> O#{type => {array, T}};
+        O -> O
+    end,
+    qast:exp([qast:raw("array_agg("), A, qast:raw(")")], Opts).
 
 %% = Math ======================================================================
 

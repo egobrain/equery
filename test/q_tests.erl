@@ -385,6 +385,21 @@ distinct_operation_test() ->
     ?assertEqual([], Args),
     ?assertEqual(integer, Feilds).
 
+array_agg_operation_test() ->
+    {Sql, Args, Feilds} = to_sql(
+        qsql:select(q:pipe(q:from(?MODULE), [
+            q:group_by(fun([#{name := Name}]) -> [Name] end),
+            q:select(fun([#{id := Id}]) ->
+                pg_sql:array_agg(Id)
+            end)
+        ]))),
+    ?assertEqual(
+            <<"select array_agg(\"__table-0\".\"id\") from \"users\" as \"__table-0\" "
+              "group by \"__table-0\".\"name\"">>,
+         Sql),
+    ?assertEqual([], Args),
+    ?assertEqual({array, integer}, Feilds).
+
 andalso_op_test() ->
     Node = qast:raw("a"),
     ?assertEqual(Node, pg_sql:'andalso'(true, Node)),
