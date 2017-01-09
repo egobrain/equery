@@ -213,7 +213,7 @@ coalesce([H|_]=List) ->
 
 in(A, #query{}=Q) ->
     qast:exp([A, qast:raw(" in ("), qsql:select(Q), qast:raw(")")], #{type => boolean});
-in(A, B) when is_list(B) ->
+in(A, B) ->
     qast:exp([A, qast:raw(" = ANY("), B, qast:raw(")")], #{type => boolean}).
 
 %% = Array oprterations ========================================================
