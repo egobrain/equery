@@ -29,7 +29,7 @@ select(#query{
         maybe_exp(WithExp),
         qast:raw("select "),
         fields_exp(Fields),
-        tables_exp(Tables),
+        from_exp(Tables),
         joins_exp(Joins),
         where_exp(Where),
         group_by_exp(GroupBy),
@@ -39,7 +39,8 @@ select(#query{
     ], Opts).
 
 -spec insert(q:query()) -> qast:ast_node().
-insert(#query{schema=Schema, tables=[{real, Table, TRef}], select=RFields, set=Set}) ->
+insert(#query{schema=Schema, tables=[{real, Table, TRef}|Rest], select=RFields, set=Set}) ->
+    Rest =:= [] orelse error("Unsupported query using operation. See q:using/[1,2]"),
     {Fields, Opts} = fields_and_opts(Schema, RFields),
     {SetKeys, SetValues} = lists:unzip([
         {{K, qast:opts(V)}, V} || {K, V} <- maps:to_list(Set)
@@ -58,7 +59,7 @@ insert(#query{schema=Schema, tables=[{real, Table, TRef}], select=RFields, set=S
     ], Opts).
 
 -spec update(q:query()) -> qast:ast_node().
-update(#query{schema=Schema, tables=[{real, Table, TRef}], select=RFields, where=Where, set=Set}) ->
+update(#query{schema=Schema, tables=[{real, Table, TRef}|Rest], select=RFields, where=Where, set=Set}) ->
     {Fields, Opts} = fields_and_opts(Schema, RFields),
     qast:exp([
         qast:raw(["update ", Table, " as "]),
@@ -69,12 +70,14 @@ update(#query{schema=Schema, tables=[{real, Table, TRef}], select=RFields, where
                 qast:raw([equery_utils:field_name(F), " = "]), Node
             ]) || {F, Node} <- maps:to_list(Set)
         ], qast:raw(",")),
+        from_exp(Rest),
         where_exp(Where),
         returning_exp(Fields)
      ], Opts).
 
 -spec upsert(q:query()) -> qast:ast_node().
-upsert(#query{schema=#{fields := SchemaFields}=Schema, tables=[{real, Table, TRef}], select=RFields, set=Set}) ->
+upsert(#query{schema=#{fields := SchemaFields}=Schema, tables=[{real, Table, TRef}|Rest], select=RFields, set=Set}) ->
+    Rest =:= [] orelse error("Unsupported query using operation. See q:using/[1,2]"),
     {Fields, Opts} = fields_and_opts(Schema, RFields),
     IndexFields = maps:fold(fun(F, O, Acc) ->
         case maps:get(index, O, false) of
@@ -107,11 +110,12 @@ upsert(#query{schema=#{fields := SchemaFields}=Schema, tables=[{real, Table, TRe
     ], Opts).
 
 -spec delete(q:query()) -> qast:ast_node().
-delete(#query{schema=Schema, tables=[{real, Table, TRef}], select=RFields, where=Where}) ->
+delete(#query{schema=Schema, tables=[{real, Table, TRef}|Rest], select=RFields, where=Where}) ->
     {Fields, Opts} = fields_and_opts(Schema, RFields),
     qast:exp([
         qast:raw(["delete from ", Table, " as "]),
         qast:table(TRef),
+        using_exp(Rest),
         where_exp(Where),
         returning_exp(Fields)
     ], Opts).
@@ -144,20 +148,23 @@ returning_exp(Fields) ->
         fields_exp(Fields)
     ]).
 
-tables_exp([_|_] = Tables) ->
+using_exp([]) -> qast:raw([]);
+using_exp([_|_]=Tables) ->
+    qast:exp([qast:raw(" using "), tables_exp_(Tables)]).
+
+from_exp([]) -> qast:raw([]);
+from_exp([_|_] = Tables) ->
+    qast:exp([qast:raw(" from "), tables_exp_(Tables)]).
+
+tables_exp_([_|_]=Tables) ->
+    qast:join(lists:map(fun table_exp/1, Tables), qast:raw(",")).
+
+table_exp({real, Table, TRef}) ->
     qast:exp([
-        qast:raw(" from "),
-        qast:join(
-            lists:map(
-                fun ({real, Table, TRef}) ->
-                        qast:exp([
-                            qast:raw([Table, " as "]),
-                            qast:table(TRef)
-                        ]);
-                    ({alias, TRef}) ->
-                        qast:table(TRef)
-                end, Tables), qast:raw(","))
-    ]).
+        qast:raw([Table, " as "]),
+        qast:table(TRef)
+    ]);
+table_exp({alias, TRef}) -> qast:table(TRef).
 
 joins_exp(Joins) ->
     qast:exp(lists:map(

@@ -192,14 +192,54 @@ q_update_test() ->
     ?assertEqual([<<"Sam">>, <<"pass">>, 3], Args),
     ?assertEqual({model, ?MODULE, []}, ReturningFields).
 
+q_update_using_test() ->
+    {Sql, Args, ReturningFields} = to_sql(
+        qsql:update(q:pipe(q:from(?MODULE), [
+            q:set(fun(_) -> #{name => <<"Sam">>} end),
+            q:set(fun(Set, _) -> Set#{password => <<"pass">>} end),
+            q:where(fun([#{id := Id}]) -> Id =:= 3 end),
+            q:using(?COMMENT_SCHEMA),
+            q:select(fun(_) -> #{} end) %% return nothing
+        ]))),
+    ?assertEqual(
+         <<"update \"users\" as \"__table-0\" set "
+           "\"name\" = $1,"
+           "\"password\" = $2 "
+           "from \"comments\" as \"__table-1\" "
+           "where (\"__table-0\".\"id\" = $3)">>,
+        Sql),
+    ?assertEqual([<<"Sam">>, <<"pass">>, 3], Args),
+    ?assertEqual({model, ?MODULE, []}, ReturningFields).
+
 q_delete_test() ->
     {Sql, Args, ReturningFields} = to_sql(
         qsql:delete(q:pipe(q:from(?MODULE), [
-            q:where(fun([#{id := Id}]) -> Id =:= 3 end)
+            q:where(fun([#{id := Id1}]) -> Id1 =:= 3 end)
         ]))),
     ?assertEqual(
          <<"delete from \"users\" as \"__table-0\" "
            "where (\"__table-0\".\"id\" = $1) "
+           "returning "
+           "\"__table-0\".\"id\","
+           "\"__table-0\".\"name\","
+           "\"__table-0\".\"password\","
+           "\"__table-0\".\"salt\"">>,
+        Sql),
+    ?assertEqual([3], Args),
+    ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST}, ReturningFields).
+
+q_delete_using_test() ->
+    {Sql, Args, ReturningFields} = to_sql(
+        qsql:delete(q:pipe(q:from(?MODULE), [
+            q:using(?MODULE),
+            q:where(fun([#{id := Id1}, #{id := Id2}]) ->
+                Id1 =:= Id2 andalso Id1 =:= 3
+            end)
+        ]))),
+    ?assertEqual(
+         <<"delete from \"users\" as \"__table-0\" "
+           "using \"users\" as \"__table-1\" "
+           "where ((\"__table-0\".\"id\" = \"__table-1\".\"id\") and (\"__table-0\".\"id\" = $1)) "
            "returning "
            "\"__table-0\".\"id\","
            "\"__table-0\".\"name\","

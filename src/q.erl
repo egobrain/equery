@@ -11,6 +11,7 @@
 
 -export([
          from/1,
+         using/1, using/2,
          recursive/2,
          join/2, join/3, join/4,
          where/1, where/2,
@@ -62,18 +63,32 @@ get(data, #query{data=Data}) -> Data.
 -spec from(model()) -> query().
 from(Info) when is_map(Info); is_atom(Info) ->
     Schema = get_schema(Info),
-    SchemaFields = maps:get(fields, Schema, #{}),
-    Table = maps:get(table, Schema),
-    TRef = make_ref(),
-    Fields = maps:map(
-        fun(N, Opts) -> qast:field(TRef, N, Opts) end,
-        SchemaFields),
+    {RealTable, Fields} = table_feilds(Schema),
     #query{
         schema = Schema,
         data=[Fields],
         select=Fields,
-        tables=[{real, equery_utils:wrap(Table), TRef}]
+        tables=[RealTable]
     }.
+
+using(Info) -> fun(Q) -> using(Info, Q) end.
+using(Info, #query{tables=[_|_]=Tables, data=Data}=Query) when is_map(Info); is_atom(Info) ->
+    Schema = get_schema(Info),
+    {RealTable, Fields} = table_feilds(Schema),
+    Query#query{
+        tables = Tables ++ [RealTable],
+        data = Data ++ [Fields]
+    }.
+
+table_feilds(#{table := Table}=Schema) ->
+    SchemaFields = maps:get(fields, Schema, #{}),
+    TRef = make_ref(),
+    Fields = maps:map(
+        fun(N, Opts) -> qast:field(TRef, N, Opts) end,
+        SchemaFields),
+    RealTable = {real, equery_utils:wrap(Table), TRef},
+    {RealTable, Fields}.
+
 
 %% = Recursive =================================================================
 
