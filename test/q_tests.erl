@@ -334,17 +334,17 @@ complex_test() ->
         ]))),
     ?assertEqual(
          <<"select "
-               "count(\"__table-0\".\"author\"),"
+               "\"__table-0\".\"__field-2\","
                "\"__table-1\".\"name\" "
            "from \"users\" as \"__table-1\" "
            "inner join ("
                "select "
-                   "\"__table-0\".\"author\","
-                   "count(\"__table-0\".\"author\") "
-               "from \"comments\" as \"__table-0\" "
-               "group by \"__table-0\".\"author\""
-               ") as \"__table-2\" "
-           "on (\"__table-1\".\"id\" = \"__table-0\".\"author\") "
+                   "\"__table-2\".\"author\" as \"__field-1\","
+                   "count(\"__table-2\".\"author\") as \"__field-2\" "
+               "from \"comments\" as \"__table-2\" "
+               "group by \"__table-2\".\"author\""
+               ") as \"__table-0\" "
+           "on (\"__table-1\".\"id\" = \"__table-0\".\"__field-1\") "
            "where (\"__table-1\".\"name\" = $1)">>,
          Sql),
     ?assertEqual([<<"user">>], Args),
