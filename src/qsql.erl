@@ -18,16 +18,19 @@ select(#query{
             with=WithExp,
             where=Where,
             select=RFields,
+            distinct=Distinct,
             joins=Joins,
             group_by=GroupBy,
             order_by=OrderBy,
             limit=Limit,
             offset=Offset
          }) ->
-    {Fields, Opts} = fields_and_opts(Schema, RFields),
+    {DistinctAst, RFields2} = distinct_exp(Distinct, RFields),
+    {Fields, Opts} = fields_and_opts(Schema, RFields2),
     qast:exp([
         maybe_exp(WithExp),
         qast:raw("select "),
+        DistinctAst,
         fields_exp(Fields),
         from_exp(Tables),
         joins_exp(Joins),
@@ -47,7 +50,7 @@ insert(#query{schema=Schema, tables=[{real, Table, TRef}|Rest], select=RFields, 
     ]),
     qast:exp([
         qast:raw(["insert into ", Table, " as "]),
-        qast:table(TRef),
+        qast:alias(TRef),
         qast:raw(" ("),
         fields_exp([
             qast:exp([qast:raw(equery_utils:field_name(F))], O) || {F, O} <- SetKeys
@@ -63,7 +66,7 @@ update(#query{schema=Schema, tables=[{real, Table, TRef}|Rest], select=RFields, 
     {Fields, Opts} = fields_and_opts(Schema, RFields),
     qast:exp([
         qast:raw(["update ", Table, " as "]),
-        qast:table(TRef),
+        qast:alias(TRef),
         qast:raw(" set "),
         qast:join([
             qast:exp([
@@ -90,7 +93,7 @@ upsert(#query{schema=#{fields := SchemaFields}=Schema, tables=[{real, Table, TRe
     ]),
     qast:exp([
         qast:raw(["insert into ", Table, " as "]),
-        qast:table(TRef),
+        qast:alias(TRef),
         qast:raw(" ("),
         fields_exp([
             qast:exp([qast:raw(equery_utils:field_name(F))], O) || {F, O} <- SetKeys
@@ -114,7 +117,7 @@ delete(#query{schema=Schema, tables=[{real, Table, TRef}|Rest], select=RFields, 
     {Fields, Opts} = fields_and_opts(Schema, RFields),
     qast:exp([
         qast:raw(["delete from ", Table, " as "]),
-        qast:table(TRef),
+        qast:alias(TRef),
         using_exp(Rest),
         where_exp(Where),
         returning_exp(Fields)
@@ -162,9 +165,9 @@ tables_exp_([_|_]=Tables) ->
 table_exp({real, Table, TRef}) ->
     qast:exp([
         qast:raw([Table, " as "]),
-        qast:table(TRef)
+        qast:alias(TRef)
     ]);
-table_exp({alias, TRef}) -> qast:table(TRef).
+table_exp({alias, TRef}) -> qast:alias(TRef).
 
 joins_exp(Joins) ->
     qast:exp(lists:map(
@@ -231,3 +234,22 @@ type(Schema, FieldsList) ->
 
 maybe_exp(undefined) -> qast:raw("");
 maybe_exp(Exp) -> Exp.
+
+distinct_exp(undefined, RFields) -> {qast:raw(""), RFields};
+distinct_exp(all, RFields) -> {qast:raw("distinct "), RFields};
+distinct_exp([], RFields) -> distinct_exp(undefined, RFields);
+distinct_exp(DistinctOn, RFields) when is_list(DistinctOn), is_map(RFields) ->
+    {DistinctAliases, RFields2} = lists:mapfoldl(fun(Field, RF) ->
+        FieldAst = maps:get(Field, RF),
+        Alias = qast:alias(make_ref()),
+        AliasedFieldAst = qast:exp([
+            FieldAst, qast:raw(" as "), Alias
+        ], qast:opts(FieldAst)),
+        {Alias, RF#{Field =>AliasedFieldAst}}
+    end, RFields, DistinctOn),
+    DistinctExp = qast:exp([
+        qast:raw("distinct on ("),
+        qast:join(DistinctAliases, qast:raw(",")),
+        qast:raw(") ")
+    ]),
+    {DistinctExp, RFields2}.

@@ -83,15 +83,15 @@ q_test() ->
         ]))),
     ?assertEqual(
          <<"select "
-           "\"__table-0\".\"id\","
-           "\"__table-0\".\"name\","
-           "\"__table-0\".\"password\","
-           "\"__table-0\".\"salt\" "
-           "from \"users\" as \"__table-0\" "
-           "inner join \"comments\" as \"__table-1\" "
-           "on (\"__table-0\".\"id\" = \"__table-1\".\"author\") "
-           "where ((\"__table-0\".\"name\" = $1) and (\"__table-1\".\"text\" = $2)) "
-           "order by \"__table-0\".\"name\" ASC,\"__table-0\".\"id\" DESC">>,
+           "\"__alias-0\".\"id\","
+           "\"__alias-0\".\"name\","
+           "\"__alias-0\".\"password\","
+           "\"__alias-0\".\"salt\" "
+           "from \"users\" as \"__alias-0\" "
+           "inner join \"comments\" as \"__alias-1\" "
+           "on (\"__alias-0\".\"id\" = \"__alias-1\".\"author\") "
+           "where ((\"__alias-0\".\"name\" = $1) and (\"__alias-1\".\"text\" = $2)) "
+           "order by \"__alias-0\".\"name\" ASC,\"__alias-0\".\"id\" DESC">>,
          Sql),
     ?assertEqual([<<"test1">>, <<"test2">>], Args),
     ?assertEqual({model, undefined, ?USER_FIELDS_LIST}, Feilds).
@@ -122,18 +122,18 @@ q_compile_test() ->
         ]))),
     ?assertEqual(
          <<"select "
-           "(\"__table-0\".\"id\" > $1),"
-           "(\"__table-0\".\"name\" = $2),"
-           "\"__table-0\".\"id\","
-           "\"__table-0\".\"name\","
-           "\"__table-0\".\"password\","
-           "\"__table-0\".\"salt\" "
-           "from \"users\" as \"__table-0\" "
-           "inner join \"comments\" as \"__table-1\" on "
-           "(\"__table-0\".\"id\" = \"__table-1\".\"author\") where "
-           "(((\"__table-0\".\"name\" = $3) or "
-           "(\"__table-0\".\"name\" = $4)) and "
-           "(\"__table-1\".\"text\" = $5))">>,
+           "(\"__alias-0\".\"id\" > $1),"
+           "(\"__alias-0\".\"name\" = $2),"
+           "\"__alias-0\".\"id\","
+           "\"__alias-0\".\"name\","
+           "\"__alias-0\".\"password\","
+           "\"__alias-0\".\"salt\" "
+           "from \"users\" as \"__alias-0\" "
+           "inner join \"comments\" as \"__alias-1\" on "
+           "(\"__alias-0\".\"id\" = \"__alias-1\".\"author\") where "
+           "(((\"__alias-0\".\"name\" = $3) or "
+           "(\"__alias-0\".\"name\" = $4)) and "
+           "(\"__alias-1\".\"text\" = $5))">>,
          Sql),
     ?assertEqual([3,<<"test1">>,<<"test2">>,<<"test1">>,<<"test2">>], Args),
     ?assertEqual({model, ?MODULE, [
@@ -146,13 +146,13 @@ q_insert_test() ->
     {Sql, _Args, ReturningFields} = to_sql(
         qsql:insert(q:set(fun(_) -> ?USER_FIELDS_WITHOUT([id]) end, q:from(?MODULE)))),
     ?assertEqual(
-        <<"insert into \"users\" as \"__table-0\" (\"name\",\"password\",\"salt\") "
+        <<"insert into \"users\" as \"__alias-0\" (\"name\",\"password\",\"salt\") "
           "values ($1,$2,$3) "
           "returning "
-          "\"__table-0\".\"id\","
-          "\"__table-0\".\"name\","
-          "\"__table-0\".\"password\","
-          "\"__table-0\".\"salt\"">>,
+          "\"__alias-0\".\"id\","
+          "\"__alias-0\".\"name\","
+          "\"__alias-0\".\"password\","
+          "\"__alias-0\".\"salt\"">>,
         Sql),
     ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST}, ReturningFields).
 
@@ -160,7 +160,7 @@ q_upsert_test() ->
     {Sql, _Args, ReturningFields} = to_sql(
         qsql:upsert(q:set(fun(_) -> ?USER_FIELDS end, q:from(?MODULE)))),
     ?assertEqual(
-        <<"insert into \"users\" as \"__table-0\" (\"id\",\"name\",\"password\",\"salt\") "
+        <<"insert into \"users\" as \"__alias-0\" (\"id\",\"name\",\"password\",\"salt\") "
           "values ($1,$2,$3,$4) "
           "on conflict (\"id\") do update set "
           "\"id\" = EXCLUDED.\"id\","
@@ -168,10 +168,10 @@ q_upsert_test() ->
           "\"password\" = EXCLUDED.\"password\","
           "\"salt\" = EXCLUDED.\"salt\" "
           "returning "
-          "\"__table-0\".\"id\","
-          "\"__table-0\".\"name\","
-          "\"__table-0\".\"password\","
-          "\"__table-0\".\"salt\"">>,
+          "\"__alias-0\".\"id\","
+          "\"__alias-0\".\"name\","
+          "\"__alias-0\".\"password\","
+          "\"__alias-0\".\"salt\"">>,
         Sql),
     ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST}, ReturningFields).
 
@@ -184,10 +184,10 @@ q_update_test() ->
             q:select(fun(_) -> #{} end) %% return nothing
         ]))),
     ?assertEqual(
-         <<"update \"users\" as \"__table-0\" set "
+         <<"update \"users\" as \"__alias-0\" set "
            "\"name\" = $1,"
            "\"password\" = $2 "
-           "where (\"__table-0\".\"id\" = $3)">>,
+           "where (\"__alias-0\".\"id\" = $3)">>,
         Sql),
     ?assertEqual([<<"Sam">>, <<"pass">>, 3], Args),
     ?assertEqual({model, ?MODULE, []}, ReturningFields).
@@ -202,11 +202,11 @@ q_update_using_test() ->
             q:select(fun(_) -> #{} end) %% return nothing
         ]))),
     ?assertEqual(
-         <<"update \"users\" as \"__table-0\" set "
+         <<"update \"users\" as \"__alias-0\" set "
            "\"name\" = $1,"
            "\"password\" = $2 "
-           "from \"comments\" as \"__table-1\" "
-           "where (\"__table-0\".\"id\" = $3)">>,
+           "from \"comments\" as \"__alias-1\" "
+           "where (\"__alias-0\".\"id\" = $3)">>,
         Sql),
     ?assertEqual([<<"Sam">>, <<"pass">>, 3], Args),
     ?assertEqual({model, ?MODULE, []}, ReturningFields).
@@ -217,13 +217,13 @@ q_delete_test() ->
             q:where(fun([#{id := Id1}]) -> Id1 =:= 3 end)
         ]))),
     ?assertEqual(
-         <<"delete from \"users\" as \"__table-0\" "
-           "where (\"__table-0\".\"id\" = $1) "
+         <<"delete from \"users\" as \"__alias-0\" "
+           "where (\"__alias-0\".\"id\" = $1) "
            "returning "
-           "\"__table-0\".\"id\","
-           "\"__table-0\".\"name\","
-           "\"__table-0\".\"password\","
-           "\"__table-0\".\"salt\"">>,
+           "\"__alias-0\".\"id\","
+           "\"__alias-0\".\"name\","
+           "\"__alias-0\".\"password\","
+           "\"__alias-0\".\"salt\"">>,
         Sql),
     ?assertEqual([3], Args),
     ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST}, ReturningFields).
@@ -237,14 +237,14 @@ q_delete_using_test() ->
             end)
         ]))),
     ?assertEqual(
-         <<"delete from \"users\" as \"__table-0\" "
-           "using \"users\" as \"__table-1\" "
-           "where ((\"__table-0\".\"id\" = \"__table-1\".\"id\") and (\"__table-0\".\"id\" = $1)) "
+         <<"delete from \"users\" as \"__alias-0\" "
+           "using \"users\" as \"__alias-1\" "
+           "where ((\"__alias-0\".\"id\" = \"__alias-1\".\"id\") and (\"__alias-0\".\"id\" = $1)) "
            "returning "
-           "\"__table-0\".\"id\","
-           "\"__table-0\".\"name\","
-           "\"__table-0\".\"password\","
-           "\"__table-0\".\"salt\"">>,
+           "\"__alias-0\".\"id\","
+           "\"__alias-0\".\"name\","
+           "\"__alias-0\".\"password\","
+           "\"__alias-0\".\"salt\"">>,
         Sql),
     ?assertEqual([3], Args),
     ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST}, ReturningFields).
@@ -256,7 +256,7 @@ q_data_test() ->
             q:select(fun([#{f := F}]) -> F end)
         ]))),
     ?assertEqual(
-         <<"select $1 from \"users\" as \"__table-0\"">>,
+         <<"select $1 from \"users\" as \"__alias-0\"">>,
          Sql),
     ?assertEqual([1], Args),
     ?assertEqual(undefined, ReturningFields).
@@ -288,12 +288,12 @@ q_group_by_test() ->
         ]))),
     ?assertEqual(
          <<"select "
-           "count(\"__table-0\".\"id\") "
-           "from \"users\" as \"__table-0\" "
-           "inner join \"comments\" as \"__table-1\" "
-           "on (\"__table-0\".\"id\" = \"__table-1\".\"author\") "
-           "where ((\"__table-0\".\"name\" = $1) and (\"__table-1\".\"text\" = $2)) "
-           "group by \"__table-1\".\"author\"">>,
+           "count(\"__alias-0\".\"id\") "
+           "from \"users\" as \"__alias-0\" "
+           "inner join \"comments\" as \"__alias-1\" "
+           "on (\"__alias-0\".\"id\" = \"__alias-1\".\"author\") "
+           "where ((\"__alias-0\".\"name\" = $1) and (\"__alias-1\".\"text\" = $2)) "
+           "group by \"__alias-1\".\"author\"">>,
          Sql),
     ?assertEqual([<<"test1">>, <<"test2">>], Args),
     ?assertEqual({model, ?MODULE, [{cnt, #{type => integer}}]}, Feilds).
@@ -306,11 +306,11 @@ limit_offset_test() ->
         ]))),
     ?assertEqual(
          <<"select "
-           "\"__table-0\".\"id\","
-           "\"__table-0\".\"name\","
-           "\"__table-0\".\"password\","
-           "\"__table-0\".\"salt\" "
-           "from \"users\" as \"__table-0\" "
+           "\"__alias-0\".\"id\","
+           "\"__alias-0\".\"name\","
+           "\"__alias-0\".\"password\","
+           "\"__alias-0\".\"salt\" "
+           "from \"users\" as \"__alias-0\" "
            "limit $1 "
            "offset $2">>, Sql),
     ?assertEqual([10, 3], Args),
@@ -334,18 +334,18 @@ complex_test() ->
         ]))),
     ?assertEqual(
          <<"select "
-               "\"__table-0\".\"__field-2\","
-               "\"__table-1\".\"name\" "
-           "from \"users\" as \"__table-1\" "
+               "\"__alias-0\".\"__field-2\","
+               "\"__alias-1\".\"name\" "
+           "from \"users\" as \"__alias-1\" "
            "inner join ("
                "select "
-                   "\"__table-2\".\"author\" as \"__field-1\","
-                   "count(\"__table-2\".\"author\") as \"__field-2\" "
-               "from \"comments\" as \"__table-2\" "
-               "group by \"__table-2\".\"author\""
-               ") as \"__table-0\" "
-           "on (\"__table-1\".\"id\" = \"__table-0\".\"__field-1\") "
-           "where (\"__table-1\".\"name\" = $1)">>,
+                   "\"__alias-2\".\"author\" as \"__field-1\","
+                   "count(\"__alias-2\".\"author\") as \"__field-2\" "
+               "from \"comments\" as \"__alias-2\" "
+               "group by \"__alias-2\".\"author\""
+               ") as \"__alias-0\" "
+           "on (\"__alias-1\".\"id\" = \"__alias-0\".\"__field-1\") "
+           "where (\"__alias-1\".\"name\" = $1)">>,
          Sql),
     ?assertEqual([<<"user">>], Args),
     ?assertEqual({model, ?MODULE, [{comments_cnt, #{type => integer}}|?USER_FIELDS_LIST([name])]}, Feilds).
@@ -356,7 +356,7 @@ single_item_select_test() ->
             q:select(fun([#{id := Id}]) -> Id end)
         ]))),
     ?assertEqual(
-         <<"select \"__table-0\".\"id\" from \"users\" as \"__table-0\"">>,
+         <<"select \"__alias-0\".\"id\" from \"users\" as \"__alias-0\"">>,
          Sql),
     ?assertEqual([], Args),
     [{id, #{type := RType}}] = ?USER_FIELDS_LIST([id]),
@@ -369,8 +369,8 @@ update_select_test() ->
             q:select(fun(S, [#{name := Name}]) -> S#{name => Name} end)
         ]))),
     ?assertEqual(
-         <<"select \"__table-0\".\"id\",\"__table-0\".\"name\" "
-           "from \"users\" as \"__table-0\"">>,
+         <<"select \"__alias-0\".\"id\",\"__alias-0\".\"name\" "
+           "from \"users\" as \"__alias-0\"">>,
          Sql),
     ?assertEqual([], Args),
     ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST([id,name])}, Feilds).
@@ -394,18 +394,18 @@ operators_test() ->
             q:select(fun([T]) -> maps:with([name], T) end)
         ]))),
     ?assertEqual(
-            <<"select \"__table-0\".\"name\" from \"users\" as \"__table-0\" where "
-              "(((\"__table-0\".\"id\" < $1) and "
-              "(\"__table-0\".\"id\" <= $2)) or "
-              "(((\"__table-0\".\"id\" > $3) and "
-              "(\"__table-0\".\"id\" >= $4)) or "
-              "((not (\"__table-0\".\"id\" = $5) and "
-              "(((not \"__table-0\".\"id\" * $6) + $7) - ($8 / $9))) or "
-              "(\"__table-0\".\"id\" = ANY($10) or "
-              "(\"__table-0\".\"id\" like $11 or "
-              "(\"__table-0\".\"id\" ilike $12 or "
-              "((\"__table-0\".\"id\" ~ $13) or "
-              "(\"__table-0\".\"id\" ~* $14))))))))">>,
+            <<"select \"__alias-0\".\"name\" from \"users\" as \"__alias-0\" where "
+              "(((\"__alias-0\".\"id\" < $1) and "
+              "(\"__alias-0\".\"id\" <= $2)) or "
+              "(((\"__alias-0\".\"id\" > $3) and "
+              "(\"__alias-0\".\"id\" >= $4)) or "
+              "((not (\"__alias-0\".\"id\" = $5) and "
+              "(((not \"__alias-0\".\"id\" * $6) + $7) - ($8 / $9))) or "
+              "(\"__alias-0\".\"id\" = ANY($10) or "
+              "(\"__alias-0\".\"id\" like $11 or "
+              "(\"__alias-0\".\"id\" ilike $12 or "
+              "((\"__alias-0\".\"id\" ~ $13) or "
+              "(\"__alias-0\".\"id\" ~* $14))))))))">>,
          Sql),
     ?assertEqual([3,4,5,6,7,1,2,3,4,[8,9,10],<<"11%">>,<<"11%">>,<<"a">>,<<"A">>], Args),
     ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST([name])}, Feilds).
@@ -419,8 +419,8 @@ distinct_operation_test() ->
             end)
         ]))),
     ?assertEqual(
-            <<"select distinct (\"__table-0\".\"id\") from \"users\" as \"__table-0\" "
-              "group by \"__table-0\".\"name\"">>,
+            <<"select distinct (\"__alias-0\".\"id\") from \"users\" as \"__alias-0\" "
+              "group by \"__alias-0\".\"name\"">>,
          Sql),
     ?assertEqual([], Args),
     ?assertEqual(integer, Feilds).
@@ -434,8 +434,8 @@ array_agg_operation_test() ->
             end)
         ]))),
     ?assertEqual(
-            <<"select array_agg(\"__table-0\".\"id\") from \"users\" as \"__table-0\" "
-              "group by \"__table-0\".\"name\"">>,
+            <<"select array_agg(\"__alias-0\".\"id\") from \"users\" as \"__alias-0\" "
+              "group by \"__alias-0\".\"name\"">>,
          Sql),
     ?assertEqual([], Args),
     ?assertEqual({array, integer}, Feilds).
@@ -492,7 +492,7 @@ aggs_test_() ->
     [{R, fun() ->
         ?assertEqual(
             {iolist_to_binary(
-             ["select ",R,"(\"__table-0\".\"id\") from \"users\" as \"__table-0\""]),
+             ["select ",R,"(\"__alias-0\".\"id\") from \"users\" as \"__alias-0\""]),
              []},
             qast:to_sql(
                 qsql:select(q:pipe(q:from(?USER_SCHEMA), [
@@ -514,7 +514,7 @@ ops_test_() ->
     [{R, fun() ->
         ?assertEqual(
             {iolist_to_binary(
-             ["select ",R,"(\"__table-0\".\"id\",$1) from \"users\" as \"__table-0\""]),
+             ["select ",R,"(\"__alias-0\".\"id\",$1) from \"users\" as \"__alias-0\""]),
              [3]},
             qast:to_sql(
                 qsql:select(q:pipe(q:from(?USER_SCHEMA), [
@@ -529,11 +529,11 @@ row_test() ->
         ]))),
     ?assertEqual(
          <<"select row("
-           "\"__table-0\".\"id\","
-           "\"__table-0\".\"name\","
-           "\"__table-0\".\"password\","
-           "\"__table-0\".\"salt\""
-           ") from \"users\" as \"__table-0\"">>,
+           "\"__alias-0\".\"id\","
+           "\"__alias-0\".\"name\","
+           "\"__alias-0\".\"password\","
+           "\"__alias-0\".\"salt\""
+           ") from \"users\" as \"__alias-0\"">>,
          Sql),
     ?assertEqual([], Args),
     ?assertEqual({record, {model, undefined, ?USER_FIELDS_LIST}}, ReturningFields).
@@ -549,9 +549,9 @@ in_test() ->
             q:select(fun([T]) -> maps:with([name], T) end)
         ]))),
     ?assertEqual(
-            <<"select \"__table-0\".\"name\" from \"users\" as \"__table-0\" where "
-              "\"__table-0\".\"id\" in ("
-                  "select max(\"__table-1\".\"id\") from \"users\" as \"__table-1\""
+            <<"select \"__alias-0\".\"name\" from \"users\" as \"__alias-0\" where "
+              "\"__alias-0\".\"id\" in ("
+                  "select max(\"__alias-1\".\"id\") from \"users\" as \"__alias-1\""
               ")">>,
          Sql),
     ?assertEqual([], Args),
@@ -564,12 +564,12 @@ in_query_test() ->
         ]))),
     ?assertEqual(
          <<"select "
-           "\"__table-0\".\"id\","
-           "\"__table-0\".\"name\","
-           "\"__table-0\".\"password\","
-           "\"__table-0\".\"salt\""
-           " from \"users\" as \"__table-0\""
-           " where \"__table-0\".\"id\" = ANY($1)">>,
+           "\"__alias-0\".\"id\","
+           "\"__alias-0\".\"name\","
+           "\"__alias-0\".\"password\","
+           "\"__alias-0\".\"salt\""
+           " from \"users\" as \"__alias-0\""
+           " where \"__alias-0\".\"id\" = ANY($1)">>,
          Sql),
     ?assertEqual([[1,2]], Args),
     ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST}, ReturningFields).
@@ -581,12 +581,12 @@ in_query_test() ->
         ]))),
     ?assertEqual(
          <<"select "
-           "\"__table-0\".\"id\","
-           "\"__table-0\".\"name\","
-           "\"__table-0\".\"password\","
-           "\"__table-0\".\"salt\""
-           " from \"users\" as \"__table-0\""
-           " where \"__table-0\".\"id\" @> $1">>,
+           "\"__alias-0\".\"id\","
+           "\"__alias-0\".\"name\","
+           "\"__alias-0\".\"password\","
+           "\"__alias-0\".\"salt\""
+           " from \"users\" as \"__alias-0\""
+           " where \"__alias-0\".\"id\" @> $1">>,
          Sql),
     ?assertEqual([[1,2]], Args),
     ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST}, ReturningFields).
@@ -598,13 +598,13 @@ pt_test() ->
     {module, M} = code:load_binary(M, "", ModuleBin),
     Q = q:from(M),
     ?assertEqual(
-         {<<"select \"__table-0\".\"id\" from \"test\" as \"__table-0\" where "
-            "(\"__table-0\".\"id\" > $1)">>,
+         {<<"select \"__alias-0\".\"id\" from \"test\" as \"__alias-0\" where "
+            "(\"__alias-0\".\"id\" > $1)">>,
           [3]},
          qast:to_sql(qsql:select(M:filter(3, Q)))),
     ?assertEqual(
-         {<<"select \"__table-0\".\"id\" from \"test\" as \"__table-0\" where "
-            "(\"__table-0\".\"id\" = $1)">>,
+         {<<"select \"__alias-0\".\"id\" from \"test\" as \"__alias-0\" where "
+            "(\"__alias-0\".\"id\" = $1)">>,
           [3]},
          qast:to_sql(qsql:select(M:filter(3, q:data(fun(D) -> D ++ D end, Q))))).
 
@@ -633,10 +633,10 @@ join_type_test_() ->
                 end)
             ]))),
             ?assertEqual(
-                 <<"select \"__table-0\".\"id\",\"__table-1\".\"id\" "
-                   "from \"users\" as \"__table-1\" ",
-                   Exp/binary, " join \"comments\" as \"__table-0\" on "
-                   "(\"__table-1\".\"id\" = \"__table-0\".\"author\")">>, Sql)
+                 <<"select \"__alias-0\".\"id\",\"__alias-1\".\"id\" "
+                   "from \"users\" as \"__alias-1\" ",
+                   Exp/binary, " join \"comments\" as \"__alias-0\" on "
+                   "(\"__alias-1\".\"id\" = \"__alias-0\".\"author\")">>, Sql)
          end,
          {Exp, F}
     end,
@@ -657,7 +657,7 @@ as_test() ->
             q:select(fun([#{id := Id}]) -> pg_sql:as(Id, text) end)
         ]))),
     ?assertEqual(
-         <<"select (\"__table-0\".\"id\")::text from \"users\" as \"__table-0\"">>,
+         <<"select (\"__alias-0\".\"id\")::text from \"users\" as \"__alias-0\"">>,
          Sql),
     ?assertEqual([], Args),
     ?assertEqual(text, Type).
@@ -668,7 +668,7 @@ set_type_test() ->
             q:select(fun([#{id := Id}]) -> pg_sql:set_type(Id, text) end)
         ]))),
     ?assertEqual(
-         <<"select \"__table-0\".\"id\" from \"users\" as \"__table-0\"">>,
+         <<"select \"__alias-0\".\"id\" from \"users\" as \"__alias-0\"">>,
          Sql),
     ?assertEqual([], Args),
     ?assertEqual(text, Type).
@@ -683,22 +683,52 @@ recursive_test() ->
                         (q:join(tree_m, fun([#{id := Id}, #{parentId := PId}]) -> Id =:= PId end))(Q))
                 end))),
     ?assertEqual(
-         <<"with recursive \"__table-0\" as ("
-               "select \"__table-1\".\"id\","
-                      "\"__table-1\".\"parentId\","
-                      "\"__table-1\".\"value\" "
-               "from \"tree\" as \"__table-1\" where (\"__table-1\".\"id\" = $1) "
+         <<"with recursive \"__alias-0\" as ("
+               "select \"__alias-1\".\"id\","
+                      "\"__alias-1\".\"parentId\","
+                      "\"__alias-1\".\"value\" "
+               "from \"tree\" as \"__alias-1\" where (\"__alias-1\".\"id\" = $1) "
                "union all "
-               "select \"__table-2\".\"id\","
-                      "\"__table-2\".\"parentId\","
-                      "\"__table-2\".\"value\" "
-               "from \"__table-0\" "
-               "inner join \"tree\" as \"__table-2\" "
-               "on (\"__table-0\".\"id\" = \"__table-2\".\"parentId\")"
-           ") select \"__table-0\".\"id\",\"__table-0\".\"parentId\",\"__table-0\".\"value\" from \"__table-0\"">>,
+               "select \"__alias-2\".\"id\","
+                      "\"__alias-2\".\"parentId\","
+                      "\"__alias-2\".\"value\" "
+               "from \"__alias-0\" "
+               "inner join \"tree\" as \"__alias-2\" "
+               "on (\"__alias-0\".\"id\" = \"__alias-2\".\"parentId\")"
+           ") select \"__alias-0\".\"id\",\"__alias-0\".\"parentId\",\"__alias-0\".\"value\" from \"__alias-0\"">>,
          Sql),
     ?assertEqual([1], Args),
     ?assertEqual({model, tree_m, ?TREE_FIELDS_LIST}, Type).
+
+distinct_test() ->
+    {Sql, Args, Feilds} = to_sql(
+        qsql:select(q:pipe(q:from(?MODULE), [
+            q:distinct()
+        ]))),
+    ?assertEqual(
+         <<"select distinct "
+           "\"__alias-0\".\"id\","
+           "\"__alias-0\".\"name\","
+           "\"__alias-0\".\"password\","
+           "\"__alias-0\".\"salt\" "
+           "from \"users\" as \"__alias-0\"">>, Sql),
+    ?assertEqual([], Args),
+    ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST}, Feilds).
+
+distinct_on_test() ->
+    {Sql, Args, Feilds} = to_sql(
+        qsql:select(q:pipe(q:from(?MODULE), [
+            q:distinct_on(fun(_) -> [id, name] end)
+        ]))),
+    ?assertEqual(
+         <<"select distinct on (\"__alias-0\",\"__alias-1\") "
+           "\"__alias-2\".\"id\" as \"__alias-0\","
+           "\"__alias-2\".\"name\" as \"__alias-1\","
+           "\"__alias-2\".\"password\","
+           "\"__alias-2\".\"salt\" "
+           "from \"users\" as \"__alias-2\"">>, Sql),
+    ?assertEqual([], Args),
+    ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST}, Feilds).
 
 %% =============================================================================
 %% Internal functions

@@ -21,7 +21,10 @@
          group_by/1, group_by/2,
          order_by/1,
          limit/1, limit/2,
-         offset/1, offset/2
+         offset/1, offset/2,
+
+         distinct/0, distinct/1,
+         distinct_on/1, distinct_on/2
         ]).
 
 -type model() :: schema() | module().
@@ -31,6 +34,7 @@
 -type select() :: #{atom() => qast:ast_node()} | qast:ast_node().
 -type set() :: #{atom() => qast:ast_node()}.
 -type order() :: [{qast:ast_node(), asc | desc}].
+-type distinct() :: all | [atom()].
 -type join_type() :: inner | left | right | full | {left, outer} | {right, outer} | {full, outer}.
 -type qfun() :: fun((query()) -> query()).
 
@@ -111,7 +115,7 @@ recursive(#query{select=RFields}=BaseQuery, UnionFun) when is_map(RFields) ->
     },
     WithExpression = qast:exp([
         qast:raw("with recursive "),
-        qast:table(TRef),
+        qast:alias(TRef),
         qast:raw(" as ("),
         qsql:select(BaseQuery),
         qast:raw(" union all "),
@@ -137,7 +141,7 @@ join(JoinType, #query{}=JoinQ, Fun, #query{data=Data, joins=Joins}=Q) ->
         qast:raw("("),
         qsql:select(JoinQR),
         qast:raw(") as "),
-        qast:table(TRef)
+        qast:alias(TRef)
     ]),
     Q#query{
         data=NewData,
@@ -154,7 +158,7 @@ join(JoinType, Info, Fun, #query{data=Data, joins=Joins}=Q) ->
     NewData = Data ++ [Fields],
     JoinAst = qast:exp([
         qast:raw([equery_utils:wrap(Table), " as "]),
-        qast:table(TRef)
+        qast:alias(TRef)
     ]),
     Q#query{
         data=NewData,
@@ -232,7 +236,6 @@ limit(Value) -> fun(Q) -> limit(Value, Q) end.
 limit(Value, Q) ->
     Q#query{limit=Value}.
 
-
 -spec offset(non_neg_integer()) -> qfun().
 offset(Value) -> fun(Q) -> offset(Value, Q) end.
 
@@ -249,6 +252,21 @@ data(Fun, #query{data=Data}=Q) ->
     Data2 = call(Fun, [Data]),
     is_list(Data2) orelse error(bad_list),
     Q#query{data=Data2}.
+
+-spec distinct() -> qfun().
+distinct() -> fun(Q) -> distinct(Q) end.
+
+-spec distinct(Q) -> Q when Q :: query().
+distinct(#query{}=Q) -> Q#query{distinct = all}.
+
+-spec distinct_on(fun((data()) -> [atom()])) -> qfun().
+distinct_on(Fun) -> fun(Q) -> distinct_on(Fun, Q) end.
+
+-spec distinct_on(fun((data()) -> [atom()]), Q) -> Q when Q :: query().
+distinct_on(Fun, #query{data=Data}=Q) ->
+    Distinct = call(Fun, [Data]),
+    is_list(Distinct) orelse error(bad_list),
+    Q#query{distinct = Distinct}.
 
 %% =============================================================================
 %% Internal functions
@@ -278,7 +296,7 @@ apply_aliases(Fields, Aliases) when is_map(Fields) ->
 extract_data(TRef, #query{select=Fields}=Query) ->
     FieldsAliases = gen_aliases(Fields),
     TableData = maps:map(fun(_K, {Alias, Opts}) ->
-        qast:exp([qast:table(TRef), qast:raw([".", Alias])], Opts)
+        qast:exp([qast:alias(TRef), qast:raw([".", Alias])], Opts)
     end, FieldsAliases),
     NewQuery = q:select(fun(S, _) -> apply_aliases(S, FieldsAliases) end, Query),
     {TableData, NewQuery}.

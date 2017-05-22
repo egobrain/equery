@@ -23,8 +23,8 @@ schema() ->
                 end)
         ]))),
     ?assertEqual(<<"select "
-        "\"__table-0\".\"payload\" -> $1 "
-        "from \"data\" as \"__table-0\"">>, Sql),
+        "\"__alias-0\".\"payload\" -> $1 "
+        "from \"data\" as \"__alias-0\"">>, Sql),
     ?assertEqual([name], Args),
     ?assertEqual(undefined, Type).
 
@@ -37,8 +37,8 @@ schema() ->
                 end)
         ]))),
     ?assertEqual(<<"select "
-        "\"__table-0\".\"payload\" ->> $1 "
-        "from \"data\" as \"__table-0\"">>, Sql),
+        "\"__alias-0\".\"payload\" ->> $1 "
+        "from \"data\" as \"__alias-0\"">>, Sql),
     ?assertEqual([name], Args),
     ?assertEqual(text, Type).
 
@@ -51,8 +51,8 @@ schema() ->
                 end)
         ]))),
     ?assertEqual(<<"select "
-        "\"__table-0\".\"payload\" #> $1 "
-        "from \"data\" as \"__table-0\"">>, Sql),
+        "\"__alias-0\".\"payload\" #> $1 "
+        "from \"data\" as \"__alias-0\"">>, Sql),
     ?assertEqual([[emails, 1]], Args),
     ?assertEqual(undefined, Type).
 
@@ -65,8 +65,8 @@ schema() ->
                 end)
         ]))),
     ?assertEqual(<<"select "
-        "\"__table-0\".\"payload\" #>> $1 "
-        "from \"data\" as \"__table-0\"">>, Sql),
+        "\"__alias-0\".\"payload\" #>> $1 "
+        "from \"data\" as \"__alias-0\"">>, Sql),
     ?assertEqual([[emails, 1]], Args),
     ?assertEqual(text, Type).
 
@@ -79,8 +79,8 @@ schema() ->
                 end)
         ]))),
     ?assertEqual(<<"select "
-        "\"__table-0\".\"payload\" @> $1 "
-        "from \"data\" as \"__table-0\"">>, Sql),
+        "\"__alias-0\".\"payload\" @> $1 "
+        "from \"data\" as \"__alias-0\"">>, Sql),
     ?assertEqual([<<"{\"a\":1}">>], Args),
     ?assertEqual(boolean, Type).
 
@@ -93,8 +93,8 @@ schema() ->
                 end)
         ]))),
     ?assertEqual(<<"select "
-        "\"__table-0\".\"payload\" <@ $1 "
-        "from \"data\" as \"__table-0\"">>, Sql),
+        "\"__alias-0\".\"payload\" <@ $1 "
+        "from \"data\" as \"__alias-0\"">>, Sql),
     ?assertEqual([<<"{\"a\":1}">>], Args),
     ?assertEqual(boolean, Type).
 
@@ -107,8 +107,8 @@ schema() ->
                 end)
         ]))),
     ?assertEqual(<<"select "
-        "\"__table-0\".\"payload\" ? $1 "
-        "from \"data\" as \"__table-0\"">>, Sql),
+        "\"__alias-0\".\"payload\" ? $1 "
+        "from \"data\" as \"__alias-0\"">>, Sql),
     ?assertEqual([1], Args),
     ?assertEqual(boolean, Type).
 
@@ -122,8 +122,8 @@ schema() ->
                 end)
         ]))),
     ?assertEqual(<<"select "
-        "\"__table-0\".\"payload\" ?| $1 "
-        "from \"data\" as \"__table-0\"">>, Sql),
+        "\"__alias-0\".\"payload\" ?| $1 "
+        "from \"data\" as \"__alias-0\"">>, Sql),
     ?assertEqual([[1, 2]], Args),
     ?assertEqual(boolean, Type).
 
@@ -136,8 +136,8 @@ schema() ->
                 end)
         ]))),
     ?assertEqual(<<"select "
-        "\"__table-0\".\"payload\" ?& $1 "
-        "from \"data\" as \"__table-0\"">>, Sql),
+        "\"__alias-0\".\"payload\" ?& $1 "
+        "from \"data\" as \"__alias-0\"">>, Sql),
     ?assertEqual([[1, 2]], Args),
     ?assertEqual(boolean, Type).
 

@@ -5,7 +5,7 @@
          value/1, value/2,
          raw/1,
          exp/1, exp/2,
-         table/1,
+         alias/1,
 
          is_ast/1,
          opts/1,
@@ -24,12 +24,12 @@
 -type opts() :: #{type => term(), any() => any()}.
 -type raw() :: {'$raw', opts(), iodata()}.
 -type value() :: {'$value', opts(), any()}.
--type table() :: {'$table', reference()}.
+-type alias() :: {'$alias', reference()}.
 -type exp() :: {'$exp', opts(), [ast_node() | any()]}.
 
--type ast_node() :: raw() | value() | table() | exp().
+-type ast_node() :: raw() | value() | alias() | exp().
 
--export_type([opts/0, raw/0, value/0, table/0, exp/0, ast_node/0]).
+-export_type([opts/0, raw/0, value/0, alias/0, exp/0, ast_node/0]).
 
 %% =============================================================================
 %% API
@@ -37,7 +37,7 @@
 
 -spec field(reference(), atom(), opts()) -> exp().
 field(TableRef, Name, Opts) ->
-    exp([table(TableRef), raw([".", equery_utils:field_name(Name)])], Opts).
+    exp([alias(TableRef), raw([".", equery_utils:field_name(Name)])], Opts).
 
 -spec value(any()) -> value().
 -spec value(any(), opts()) -> value().
@@ -54,8 +54,8 @@ exp(V, Opts) -> {'$exp', Opts, V}.
 raw(V) -> raw(V, #{}).
 raw(V, Opts) -> {'$raw', Opts, V}.
 
--spec table(reference()) -> table().
-table(Ref) -> {'$table', Ref}.
+-spec alias(reference()) -> alias().
+alias(Ref) -> {'$alias', Ref}.
 
 -spec opts(ast_node()) -> opts().
 opts({'$value', Opts, _}) -> Opts;
@@ -67,14 +67,14 @@ opts(_) -> #{}.
 set_opts({'$value', _Opts, Value}, NewOpts) -> {'$value', NewOpts, Value};
 set_opts({'$exp', _Opts, Exp}, NewOpts) -> {'$exp', NewOpts, Exp};
 set_opts({'$raw', _Opts, Raw}, NewOpts) -> {'$raw', NewOpts, Raw};
-set_opts({'$table', _Raw}=Node, _NewOpts) -> Node;
+set_opts({'$alias', _Raw}=Node, _NewOpts) -> Node;
 set_opts(V, NewOpts) -> value(V, NewOpts).
 
 -spec is_ast(any()) -> boolean().
 is_ast({'$value', _Opts, _Value}) -> true;
 is_ast({'$exp', _Opts, _Exp}) -> true;
 is_ast({'$raw', _Opts, _Raw}) -> true;
-is_ast({'$table', _Raw}) -> true;
+is_ast({'$alias', _Raw}) -> true;
 is_ast(_) -> false.
 
 %% =============================================================================
@@ -87,7 +87,7 @@ join([H|T], Sep) ->
     qast:exp([H|lists:foldr(fun(I, Acc) -> [Sep,I|Acc] end, [], T)]).
 
 -record(state, {
-            aliases=#{}, tables_cnt=0,
+            aliases=#{}, aliases_cnt=0,
             args=[], args_cnt=0
        }).
 
@@ -97,8 +97,8 @@ to_sql(Ast) ->
         fun({'$value', _Opts, V}, #state{args=Vs, args_cnt=Cnt}=St) ->
                NewCnt = Cnt+1,
                {index(NewCnt), St#state{args=[V|Vs], args_cnt=NewCnt}};
-           ({'$table', TRef}, St) ->
-               get_table_alias(TRef, St);
+           ({'$alias', TRef}, St) ->
+               get_alias(TRef, St);
            ({'$raw', _Opts, V}, St) ->
                {V, St}
         end, #state{}, Ast),
@@ -114,7 +114,7 @@ traverse(F, Acc, {'$raw', _Opts, _}=Item) ->
     F(Item, Acc);
 traverse(F, Acc, {'$value', _Opts, _V}=Item) ->
     F(Item, Acc);
-traverse(F, Acc, {'$table', _V}=Item) ->
+traverse(F, Acc, {'$alias', _V}=Item) ->
     F(Item, Acc);
 %% Other is value
 traverse(F, Acc, V) ->
@@ -123,16 +123,16 @@ traverse(F, Acc, V) ->
 index(N) ->
     [ $$, integer_to_binary(N) ].
 
-table_alias(Int) ->
-    equery_utils:wrap(["__table-",integer_to_list(Int)]).
+alias_str(Int) ->
+    equery_utils:wrap(["__alias-",integer_to_list(Int)]).
 
-get_table_alias(TRef, #state{aliases=As, tables_cnt=Cnt}=St) ->
-    case maps:find(TRef, As) of
-        {ok, TAlias} -> {TAlias, St};
+get_alias(Ref, #state{aliases=Aliases, aliases_cnt=Cnt}=St) ->
+    case maps:find(Ref, Aliases) of
+        {ok, Alias} -> {Alias, St};
         error ->
-            TAlias = table_alias(Cnt),
-            As2 = maps:put(TRef, TAlias, As),
-            {TAlias, St#state{aliases=As2, tables_cnt=Cnt+1}}
+            AliasStr = alias_str(Cnt),
+            Aliases2 = maps:put(Ref, AliasStr, Aliases),
+            {AliasStr, St#state{aliases=Aliases2, aliases_cnt=Cnt+1}}
     end.
 
 %% =============================================================================
@@ -148,7 +148,7 @@ ast_utils_test_() ->
        {"value", fun value/1, 1, true, NewOpts},
        {"exp", fun exp/1, [], true, NewOpts},
        {"raw", fun raw/1, "test", true, NewOpts},
-       {"table", fun table/1, make_ref(), true, #{}},
+       {"alias", fun alias/1, make_ref(), true, #{}},
        {"some value", fun(A) -> A end, 123, false, NewOpts}
     ],
     [
