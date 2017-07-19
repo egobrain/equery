@@ -730,6 +730,18 @@ distinct_on_test() ->
     ?assertEqual([], Args),
     ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST}, Feilds).
 
+extra_test() ->
+    Q = q:pipe(q:from(?MODULE), [
+        q:set_extra(a, 1),
+        q:set_extra(b, 2),
+        q:set_extra(a, 3)
+    ]),
+    ?assertEqual({ok, 3}, q:get_extra(a, Q)),
+    ?assertEqual({ok, 2}, q:get_extra(b, Q)),
+    ?assertEqual(error, q:get_extra(c, Q)),
+    ?assertEqual(3, q:get_extra(a, Q, 2)),
+    ?assertEqual(2, q:get_extra(c, Q, 2)).
+
 %% =============================================================================
 %% Internal functions
 %% =============================================================================

@@ -6,7 +6,12 @@
 -export([
          pipe/2,
 
-         get/2
+         get/2,
+
+         set_extra/2,
+         set_extra/3,
+         get_extra/2,
+         get_extra/3
         ]).
 
 -export([
@@ -61,6 +66,24 @@ pipe(Query, Funs) ->
          (data, query()) -> data().
 get(schema, #query{schema=Schema}) -> Schema;
 get(data, #query{data=Data}) -> Data.
+
+
+-spec set_extra(Key :: term(), Value :: term()) -> qfun().
+set_extra(Key, Value) -> fun(Query) ->
+    set_extra(Key, Value, Query)
+end.
+
+-spec set_extra(Key :: term(), Value :: term(), query()) -> term().
+set_extra(Key, Value, #query{extra=Extra}=Query) ->
+    Query#query{extra=maps:put(Key, Value, Extra)}.
+
+-spec get_extra(Key :: term(), query()) -> {ok, term()} | error.
+get_extra(Key, #query{extra=Extra}) ->
+    maps:find(Key, Extra).
+
+-spec get_extra(Key :: term(), query(), Default :: term()) -> term().
+get_extra(Key, #query{extra=Extra}, Default) ->
+    maps:get(Key, Extra, Default).
 
 %% = Query builders ============================================================
 

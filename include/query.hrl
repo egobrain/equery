@@ -11,5 +11,6 @@
             group_by = [] :: [qast:ast_node()],
             order_by = [] :: q:order(),
             limit :: non_neg_integer() | undefined,
-            offset :: non_neg_integer() | undefined
+            offset :: non_neg_integer() | undefined,
+            extra = #{} :: #{term() => term()}
          }).
