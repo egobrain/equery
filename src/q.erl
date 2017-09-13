@@ -17,6 +17,7 @@
 -export([
          from/1,
          using/1, using/2,
+         with/2, with/3,
          recursive/2,
          join/2, join/3, join/4,
          where/1, where/2,
@@ -34,6 +35,7 @@
 
 -type model() :: schema() | module().
 -type query() :: #query{}.
+-type table() :: {alias, qast:alias(), #{atom() => term()}}.
 -type schema() :: #{fields => #{atom() => #{atom() => term()}}, table => binary()}.
 -type data() :: [#{atom() => qast:ast_node()}].
 -type select() :: #{atom() => qast:ast_node()} | qast:ast_node().
@@ -99,6 +101,11 @@ from(Info) when is_map(Info); is_atom(Info) ->
     }.
 
 using(Info) -> fun(Q) -> using(Info, Q) end.
+using({alias, _AliasExp, FieldsExp}=Alias, #query{tables=[_|_]=Tables, data=Data}=Query) ->
+    Query#query{
+        tables = Tables ++ [Alias],
+        data = Data ++ [FieldsExp]
+    };
 using(Info, #query{tables=[_|_]=Tables, data=Data}=Query) when is_map(Info); is_atom(Info) ->
     Schema = get_schema(Info),
     {RealTable, Fields} = table_feilds(Schema),
@@ -134,7 +141,7 @@ recursive(#query{select=RFields}=BaseQuery, UnionFun) when is_map(RFields) ->
         },
         data = [FieldsExp],
         select = FieldsExp,
-        tables = [{alias, TRef}]
+        tables = [{alias, qast:alias(TRef), FieldsExp}]
     },
     WithExpression = qast:exp([
         qast:raw("with recursive "),
@@ -147,15 +154,37 @@ recursive(#query{select=RFields}=BaseQuery, UnionFun) when is_map(RFields) ->
     ]),
     InternalQ#query{with=WithExpression}.
 
--spec join(model() | query(), fun((data()) -> qast:ast_node())) -> qfun().
+-spec with(model() | query() | qast:ast_node(), fun((table()) -> qfun())) -> qfun().
+with(Info, Fun) -> fun(Q) -> with(Info, Fun, Q) end.
+
+-spec with(model() | query() | qast:ast_node(), fun((table()) -> qfun()), Q) -> Q when Q :: query().
+with(Info, Fun, Q) when is_map(Info); is_atom(Info) ->
+    with(from(Info), Fun, Q);
+with(#query{}=Query, Fun, Q) ->
+    with(qsql:select(Query), Fun, Q);
+with(Ast, Fun, Q) ->
+    #{type := {model, _Model, Fields}} = Opts = qast:opts(Ast),
+    TRef = make_ref(),
+    FieldsExp = lists:foldl(fun({N, O}, Acc) ->
+        Acc#{N => qast:field(TRef, N, O)}
+    end, #{}, Fields),
+    Alias = qast:alias(TRef, Opts),
+    WithExpression = qast:exp([
+        qast:raw("with "),
+        Alias,
+        qast:raw(" as ("), Ast, qast:raw(") ")
+    ]),
+    (call(Fun, [{alias, Alias, FieldsExp}]))(Q#query{with=WithExpression}).
+
+-spec join(model() | query() | table(), fun((data()) -> qast:ast_node())) -> qfun().
 join(Info, Fun) ->
     join(inner, Info, Fun).
 
--spec join(join_type(), model() | query(), fun((data()) -> qast:ast_node())) -> qfun().
+-spec join(join_type(), model() | query() | table(), fun((data()) -> qast:ast_node())) -> qfun().
 join(JoinType, Info, Fun) ->
     fun(Q) -> join(JoinType, Info, Fun, Q) end.
 
--spec join(join_type(), model() | query(), fun((data()) -> qast:ast_node()), Q) -> Q when Q :: query().
+-spec join(join_type(), model() | query() | table(), fun((data()) -> qast:ast_node()), Q) -> Q when Q :: query().
 join(JoinType, #query{}=JoinQ, Fun, #query{data=Data, joins=Joins}=Q) ->
     TRef = make_ref(),
     {FieldsData, JoinQR} = extract_data(TRef, JoinQ),
@@ -169,6 +198,12 @@ join(JoinType, #query{}=JoinQ, Fun, #query{data=Data, joins=Joins}=Q) ->
     Q#query{
         data=NewData,
         joins=[{JoinType, JoinAst, call(Fun, [NewData])}|Joins]
+    };
+join(JoinType, {alias, TableAlias, FieldsExp}, Fun, #query{data=Data, joins=Joins}=Q) ->
+    NewData = Data ++ [FieldsExp],
+    Q#query{
+        data=NewData,
+        joins=[{JoinType, TableAlias, call(Fun, [NewData])}|Joins]
     };
 join(JoinType, Info, Fun, #query{data=Data, joins=Joins}=Q) ->
     JoinSchema = get_schema(Info),

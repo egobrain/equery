@@ -167,7 +167,7 @@ table_exp({real, Table, TRef}) ->
         qast:raw([Table, " as "]),
         qast:alias(TRef)
     ]);
-table_exp({alias, TRef}) -> qast:alias(TRef).
+table_exp({alias, AliasExp, _FeildsExp}) -> AliasExp.
 
 joins_exp(Joins) ->
     qast:exp(lists:map(

@@ -3,9 +3,9 @@
 -export([
          field/3,
          value/1, value/2,
-         raw/1,
+         raw/1, raw/2,
          exp/1, exp/2,
-         alias/1,
+         alias/1, alias/2,
 
          is_ast/1,
          opts/1,
@@ -24,7 +24,7 @@
 -type opts() :: #{type => term(), any() => any()}.
 -type raw() :: {'$raw', opts(), iodata()}.
 -type value() :: {'$value', opts(), any()}.
--type alias() :: {'$alias', reference()}.
+-type alias() :: {'$alias', opts(), reference()}.
 -type exp() :: {'$exp', opts(), [ast_node() | any()]}.
 
 -type ast_node() :: raw() | value() | alias() | exp().
@@ -55,26 +55,29 @@ raw(V) -> raw(V, #{}).
 raw(V, Opts) -> {'$raw', Opts, V}.
 
 -spec alias(reference()) -> alias().
-alias(Ref) -> {'$alias', Ref}.
+-spec alias(reference(), opts()) -> alias().
+alias(Ref) -> alias(Ref, #{}).
+alias(Ref, Opts) -> {'$alias', Opts, Ref}.
 
 -spec opts(ast_node()) -> opts().
 opts({'$value', Opts, _}) -> Opts;
 opts({'$exp', Opts, _}) -> Opts;
 opts({'$raw', Opts, _}) -> Opts;
+opts({'$alias', Opts, _}) -> Opts;
 opts(_) -> #{}.
 
 -spec set_opts(ast_node(), opts()) -> ast_node().
-set_opts({'$value', _Opts, Value}, NewOpts) -> {'$value', NewOpts, Value};
-set_opts({'$exp', _Opts, Exp}, NewOpts) -> {'$exp', NewOpts, Exp};
-set_opts({'$raw', _Opts, Raw}, NewOpts) -> {'$raw', NewOpts, Raw};
-set_opts({'$alias', _Raw}=Node, _NewOpts) -> Node;
+set_opts({'$value', _Opts, Value}, NewOpts) -> value(Value, NewOpts);
+set_opts({'$exp', _Opts, Exp}, NewOpts) -> exp(Exp, NewOpts);
+set_opts({'$raw', _Opts, Raw}, NewOpts) -> raw(Raw, NewOpts);
+set_opts({'$alias', _Opts, TRef}, NewOpts) -> alias(TRef, NewOpts);
 set_opts(V, NewOpts) -> value(V, NewOpts).
 
 -spec is_ast(any()) -> boolean().
 is_ast({'$value', _Opts, _Value}) -> true;
 is_ast({'$exp', _Opts, _Exp}) -> true;
 is_ast({'$raw', _Opts, _Raw}) -> true;
-is_ast({'$alias', _Raw}) -> true;
+is_ast({'$alias', _Opts, _Raw}) -> true;
 is_ast(_) -> false.
 
 %% =============================================================================
@@ -97,7 +100,7 @@ to_sql(Ast) ->
         fun({'$value', _Opts, V}, #state{args=Vs, args_cnt=Cnt}=St) ->
                NewCnt = Cnt+1,
                {index(NewCnt), St#state{args=[V|Vs], args_cnt=NewCnt}};
-           ({'$alias', TRef}, St) ->
+           ({'$alias', _Opts, TRef}, St) ->
                get_alias(TRef, St);
            ({'$raw', _Opts, V}, St) ->
                {V, St}
@@ -114,7 +117,7 @@ traverse(F, Acc, {'$raw', _Opts, _}=Item) ->
     F(Item, Acc);
 traverse(F, Acc, {'$value', _Opts, _V}=Item) ->
     F(Item, Acc);
-traverse(F, Acc, {'$alias', _V}=Item) ->
+traverse(F, Acc, {'$alias', _Opts, _V}=Item) ->
     F(Item, Acc);
 %% Other is value
 traverse(F, Acc, V) ->
@@ -148,7 +151,7 @@ ast_utils_test_() ->
        {"value", fun value/1, 1, true, NewOpts},
        {"exp", fun exp/1, [], true, NewOpts},
        {"raw", fun raw/1, "test", true, NewOpts},
-       {"alias", fun alias/1, make_ref(), true, #{}},
+       {"alias", fun alias/1, make_ref(), true, NewOpts},
        {"some value", fun(A) -> A end, 123, false, NewOpts}
     ],
     [

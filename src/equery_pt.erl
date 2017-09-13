@@ -33,6 +33,7 @@ search_and_compile({call, _, {remote, _, {atom, _, q}, {atom, _, F}}, Args}=Node
       F =:= set;
       F =:= group_by;
       F =:= join;
+      F =:= with;
       F =:= order_by;
       F =:= select;
       F =:= where;

@@ -6,7 +6,7 @@
             data = []:: q:data(),
             select = #{} :: q:select(),
             set = #{} :: q:set(),
-            tables = [] :: [{real, iolist(), reference()} | {alias, reference()}],
+            tables = [] :: [{real, iolist(), reference()} | q:table()],
             joins = [] :: [{q:join_type(), qast:ast_node(), qast:ast_node()}],
             group_by = [] :: [qast:ast_node()],
             order_by = [] :: q:order(),

@@ -175,6 +175,67 @@ q_upsert_test() ->
         Sql),
     ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST}, ReturningFields).
 
+q_with_test() ->
+    {Sql, Args, ReturningFields} = to_sql(
+        qsql:select(q:pipe(q:from(?MODULE), [
+            q:with(?COMMENT_SCHEMA, fun(Comments) ->
+                q:using(Comments)
+            end)
+        ]))),
+    ?assertEqual(
+         <<"with \"__alias-0\" as (",
+           "select ",
+           "\"__alias-1\".\"author\",",
+           "\"__alias-1\".\"id\",",
+           "\"__alias-1\".\"text\" ",
+           "from \"comments\" as \"__alias-1\"",
+           ") select ",
+           "\"__alias-2\".\"id\",",
+           "\"__alias-2\".\"name\",",
+           "\"__alias-2\".\"password\",",
+           "\"__alias-2\".\"salt\" ",
+           "from \"users\" as \"__alias-2\",\"__alias-0\"">>,
+        Sql),
+    ?assertEqual([], Args),
+    ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST}, ReturningFields).
+
+q_with_ast_test() ->
+    {Sql, Args, ReturningFields} = to_sql(
+        qsql:select(q:pipe(q:from(?MODULE), [
+            q:with(
+                qsql:update(q:pipe(q:from(?MODULE), [
+                    q:set(fun(_) -> #{name => <<"Sam">>} end),
+                    q:where(fun([#{id := Id}]) -> Id =:= 3 end)
+                ])),
+            fun(Updated) ->
+               q:join(Updated, fun([#{id := OldId}, #{id := NewId}]) ->
+                    OldId =:= NewId
+                end)
+            end)
+        ]))),
+    ?assertEqual(
+         <<"with \"__alias-0\" as (",
+           "update \"users\" as \"__alias-1\" set ",
+           "\"name\" = $1 ",
+           "where (\"__alias-1\".\"id\" = $2) ",
+           "returning ",
+           "\"__alias-1\".\"id\",",
+           "\"__alias-1\".\"name\",",
+           "\"__alias-1\".\"password\",",
+           "\"__alias-1\".\"salt\"",
+           ") select ",
+           "\"__alias-2\".\"id\",",
+           "\"__alias-2\".\"name\",",
+           "\"__alias-2\".\"password\",",
+           "\"__alias-2\".\"salt\" ",
+           "from \"users\" as \"__alias-2\" ",
+           "inner join \"__alias-0\" ",
+           "on (\"__alias-2\".\"id\" = \"__alias-0\".\"id\")">>,
+        Sql),
+    ?assertEqual([<<"Sam">>, 3], Args),
+    ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST}, ReturningFields).
+
+
 q_update_test() ->
     {Sql, Args, ReturningFields} = to_sql(
         qsql:update(q:pipe(q:from(?MODULE), [
