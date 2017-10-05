@@ -6,7 +6,6 @@
          select/1,
          insert/1,
          update/1,
-         upsert/1,
          delete/1
         ]).
 
@@ -42,7 +41,13 @@ select(#query{
     ], Opts).
 
 -spec insert(q:query()) -> qast:ast_node().
-insert(#query{schema=Schema, tables=[{real, Table, TRef}|Rest], select=RFields, set=Set}) ->
+insert(#query{
+            schema=Schema,
+            tables=[{real, Table, TRef}|Rest],
+            select=RFields,
+            set=Set,
+            on_conflict=OnConflict
+    }) ->
     Rest =:= [] orelse error("Unsupported query using operation. See q:using/[1,2]"),
     {Fields, Opts} = fields_and_opts(Schema, RFields),
     {SetKeys, SetValues} = lists:unzip([
@@ -58,6 +63,7 @@ insert(#query{schema=Schema, tables=[{real, Table, TRef}|Rest], select=RFields, 
         qast:raw([") values ("]),
         fields_exp(SetValues),
         qast:raw([")"]),
+        on_conflict_exp(OnConflict),
         returning_exp(Fields)
     ], Opts).
 
@@ -77,40 +83,6 @@ update(#query{schema=Schema, tables=[{real, Table, TRef}|Rest], select=RFields, 
         where_exp(Where),
         returning_exp(Fields)
      ], Opts).
-
--spec upsert(q:query()) -> qast:ast_node().
-upsert(#query{schema=#{fields := SchemaFields}=Schema, tables=[{real, Table, TRef}|Rest], select=RFields, set=Set}) ->
-    Rest =:= [] orelse error("Unsupported query using operation. See q:using/[1,2]"),
-    {Fields, Opts} = fields_and_opts(Schema, RFields),
-    IndexFields = maps:fold(fun(F, O, Acc) ->
-        case maps:get(index, O, false) of
-            true -> [{F, O}|Acc];
-            false -> Acc
-        end
-    end, [], SchemaFields),
-    {SetKeys, SetValues} = lists:unzip([
-        {{K, qast:opts(V)}, V} || {K, V} <- maps:to_list(Set)
-    ]),
-    qast:exp([
-        qast:raw(["insert into ", Table, " as "]),
-        qast:alias(TRef),
-        qast:raw(" ("),
-        fields_exp([
-            qast:exp([qast:raw(equery_utils:field_name(F))], O) || {F, O} <- SetKeys
-        ]),
-        qast:raw([") values ("]),
-        fields_exp(SetValues),
-        qast:raw([") on conflict ("]),
-        fields_exp([
-            qast:exp([qast:raw(equery_utils:field_name(F))], O) || {F, O} <- IndexFields
-        ]),
-        qast:raw([") do update set "]),
-        fields_exp([
-            qast:raw([equery_utils:field_name(F), " = EXCLUDED.", equery_utils:field_name(F)])
-            || {F, _Opts} <- SetKeys
-        ]),
-        returning_exp(Fields)
-    ], Opts).
 
 -spec delete(q:query()) -> qast:ast_node().
 delete(#query{schema=Schema, tables=[{real, Table, TRef}|Rest], select=RFields, where=Where}) ->
@@ -253,3 +225,35 @@ distinct_exp(DistinctOn, RFields) when is_list(DistinctOn), is_map(RFields) ->
         qast:raw(") ")
     ]),
     {DistinctExp, RFields2}.
+
+on_conflict_exp(Conflicts) ->
+    lists:foldr(fun({ConflictTarget, ConflictAction}, Acc) ->
+        qast:exp([
+            Acc,
+            qast:raw(" on conflict"),
+            conflict_target_exp(ConflictTarget),
+            qast:raw("do "),
+            conflict_action_exp(ConflictAction)
+        ])
+    end, qast:raw(""), maps:to_list(Conflicts)).
+
+conflict_target_exp(any) -> qast:raw(" ");
+conflict_target_exp(Columns) when is_list(Columns) ->
+    qast:exp([
+        qast:raw(" ("),
+        qast:join([
+            qast:raw(equery_utils:field_name(C)) || C <- Columns
+        ], qast:raw(",")),
+        qast:raw(") ")
+    ]).
+
+conflict_action_exp(nothing) -> qast:raw("nothing");
+conflict_action_exp(Set) when is_map(Set) ->
+    qast:exp([
+        qast:raw("update set "),
+        qast:join([
+            qast:exp([
+                qast:raw([equery_utils:field_name(F), " = "]), Node
+            ]) || {F, Node} <- maps:to_list(Set)
+        ], qast:raw(","))
+    ]).

@@ -25,6 +25,7 @@
          set/1, set/2,
          data/1, data/2,
          group_by/1, group_by/2,
+         on_conflict/2, on_conflict/3,
          order_by/1,
          limit/1, limit/2,
          offset/1, offset/2,
@@ -44,6 +45,8 @@
 -type distinct() :: all | [atom()].
 -type join_type() :: inner | left | right | full | {left, outer} | {right, outer} | {full, outer}.
 -type qfun() :: fun((query()) -> query()).
+-type conflict_target() :: any | [atom()].
+-type conflict_action() :: nothing | set().
 
 -export_type([query/0]).
 
@@ -55,7 +58,9 @@
          set/0,
          order/0,
          join_type/0,
-         qfun/0
+         qfun/0,
+         conflict_target/0,
+         conflict_action/0
         ]).
 
 %% = Flow ======================================================================
@@ -278,6 +283,18 @@ group_by(Fun) -> fun(Q) -> group_by(Fun, Q) end.
 group_by(Fun, #query{data=Data}=Q) ->
     Q#query{group_by=call(Fun, [Data])}.
 
+-spec on_conflict(conflict_target(), fun((data) -> conflict_action())) -> qfun().
+on_conflict(ConflictTarget, Fun) -> fun(Q) -> on_conflict(ConflictTarget, Fun, Q) end.
+
+-spec on_conflict(conflict_target(), fun((data) -> conflict_action()), Q) -> Q when Q :: query().
+on_conflict(ConflictTarget, Fun, #query{on_conflict=OnConflict, data=Data}=Q) ->
+    Schema = get(schema, Q),
+    SchemaFields = maps:get(fields, Schema, #{}),
+    Table = qast:raw("EXCLUDED"),
+    Fields = maps:map(fun(N, Opts) ->
+        qast:exp([Table, qast:raw([".", equery_utils:field_name(N)])], Opts)
+    end, SchemaFields),
+    Q#query{on_conflict=maps:put(ConflictTarget, Fun(Data ++ [Fields]), OnConflict)}.
 
 -spec order_by(fun((data()) -> order())) -> qfun().
 order_by(Fun) -> fun(Q) -> order_by(Fun, Q) end.
@@ -285,7 +302,6 @@ order_by(Fun) -> fun(Q) -> order_by(Fun, Q) end.
 -spec order_by(fun((data()) -> order()), Q) -> Q when Q :: query().
 order_by(Fun, #query{data=Data}=Q) ->
     Q#query{order_by=call(Fun, [Data])}.
-
 
 -spec limit(non_neg_integer()) -> qfun().
 limit(Value) -> fun(Q) -> limit(Value, Q) end.
