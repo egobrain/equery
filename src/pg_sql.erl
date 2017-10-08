@@ -172,11 +172,10 @@ distinct(A) ->
 
 -spec 'array_agg'(value()) -> qast:ast_node().
 array_agg(A) ->
-    Opts = case qast:opts(A) of
-        #{type := T}=O -> O#{type => {array, T}};
-        O -> O
-    end,
-    qast:exp([qast:raw("array_agg("), A, qast:raw(")")], Opts).
+    Opts = qast:opts(A),
+    Type = maps:get(type, Opts, undefined),
+    NewOpts = Opts#{type => {array, Type}},
+    qast:exp([qast:raw("array_agg("), A, qast:raw(")")], NewOpts).
 
 %% = Math ======================================================================
 

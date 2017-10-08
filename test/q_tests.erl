@@ -796,6 +796,22 @@ distinct_on_test() ->
     ?assertEqual([], Args),
     ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST}, Feilds).
 
+drop_distinct_on_test() ->
+    {Sql, Args, Feilds} = to_sql(
+        qsql:select(q:pipe(q:from(?MODULE), [
+            q:distinct_on(fun(_) -> [id, name] end),
+            q:distinct_on(fun(_) -> [] end) %% Drop distinct
+        ]))),
+    ?assertEqual(
+         <<"select "
+           "\"__alias-0\".\"id\","
+           "\"__alias-0\".\"name\","
+           "\"__alias-0\".\"password\","
+           "\"__alias-0\".\"salt\" "
+           "from \"users\" as \"__alias-0\"">>, Sql),
+    ?assertEqual([], Args),
+    ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST}, Feilds).
+
 extra_test() ->
     Q = q:pipe(q:from(?MODULE), [
         q:set_extra(a, 1),
