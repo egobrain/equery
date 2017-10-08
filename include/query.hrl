@@ -12,6 +12,5 @@
             order_by = [] :: q:order(),
             on_conflict = #{} :: #{q:conflict_target() => q:conflict_action()},
             limit :: non_neg_integer() | undefined,
-            offset :: non_neg_integer() | undefined,
-            extra = #{} :: #{term() => term()}
+            offset :: non_neg_integer() | undefined
          }).
