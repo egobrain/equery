@@ -271,7 +271,7 @@ on_conflict(ConflictTarget, Fun, #query{on_conflict=OnConflict, data=Data}=Q) ->
     Fields = maps:map(fun(N, Opts) ->
         qast:exp([Table, qast:raw([".", equery_utils:field_name(N)])], Opts)
     end, SchemaFields),
-    Q#query{on_conflict=maps:put(ConflictTarget, Fun(Data ++ [Fields]), OnConflict)}.
+    Q#query{on_conflict=maps:put(ConflictTarget, call(Fun, [Data ++ [Fields]]), OnConflict)}.
 
 -spec order_by(fun((data()) -> order())) -> qfun().
 order_by(Fun) -> fun(Q) -> order_by(Fun, Q) end.
