@@ -71,7 +71,7 @@ get(data, #query{data=Data}) -> Data.
 
 %% = Query builders ============================================================
 
--spec from(model()) -> query().
+-spec from(model() | query() | qast:ast_node()) -> query().
 from(Info) when is_map(Info); is_atom(Info) ->
     Schema = get_schema(Info),
     {RealTable, Fields} = table_feilds(Schema),
@@ -80,7 +80,29 @@ from(Info) when is_map(Info); is_atom(Info) ->
         data=[Fields],
         select=Fields,
         tables=[RealTable]
+     };
+from(#query{}=Query) ->
+    from(qsql:select(Query));
+from(Ast) ->
+    #{type := {model, Model, FieldsList}} = qast:opts(Ast),
+    TRef = make_ref(),
+    Fields = maps:from_list(FieldsList),
+    FieldsExp = aliased_fields(TRef, Fields),
+    TableAst = as(Ast, qast:alias(TRef)),
+    #query{
+        schema = #{
+            model => Model,
+            fields => Fields
+        },
+        data = [FieldsExp],
+        select = FieldsExp,
+        tables = [{alias, TableAst, FieldsExp}]
     }.
+
+as(VAst, AsAst) ->
+    qast:exp([
+        qast:raw("("), VAst, qast:raw(") as "), AsAst
+    ], qast:opts(VAst)).
 
 using(Info) -> fun(Q) -> using(Info, Q) end.
 using({alias, _AliasExp, FieldsExp}=Alias, #query{tables=[_|_]=Tables, data=Data}=Query) ->
@@ -167,13 +189,14 @@ join(JoinType, Info, Fun) ->
     fun(Q) -> join(JoinType, Info, Fun, Q) end.
 
 -spec join(join_type(), model() | query() | table(), fun((data()) -> qast:ast_node()), Q) -> Q when Q :: query().
-join(JoinType, #query{}=JoinQ, Fun, #query{data=Data, joins=Joins}=Q) ->
+join(JoinType, #query{select=RFields}=JoinQ, Fun, #query{data=Data, joins=Joins}=Q) ->
     TRef = make_ref(),
-    {FieldsData, JoinQR} = extract_data(TRef, JoinQ),
+    Fields = maps:map(fun(_, V) -> qast:opts(V) end, RFields),
+    FieldsData = aliased_fields(TRef, Fields),
     NewData = Data ++ [FieldsData],
     JoinAst = qast:exp([
         qast:raw("("),
-        qsql:select(JoinQR),
+        qsql:select(JoinQ),
         qast:raw(") as "),
         qast:alias(TRef)
     ]),
@@ -328,26 +351,9 @@ call(Fun, Args) -> apply(equery_pt:transform_fun(Fun), Args).
 get_schema(Schema) when is_map(Schema) -> Schema;
 get_schema(Module) when is_atom(Module) -> (Module:schema())#{model => Module}.
 
-field_alias(Int) ->
-    equery_utils:wrap(["__field-",integer_to_list(Int)]).
-
-gen_aliases(Fields) when is_map(Fields) ->
-    {FieldAliases, _} = lists:mapfoldl(fun({K, V}, Acc) ->
-        Alias = field_alias(Acc),
-        {{K, {Alias, qast:opts(V)}}, Acc+1}
-    end, 1, maps:to_list(Fields)),
-    maps:from_list(FieldAliases).
-
-apply_aliases(Fields, Aliases) when is_map(Fields) ->
-    maps:map(fun(K, V) ->
-        {Alias, _Opts} = maps:get(K, Aliases),
-        qast:exp([V, qast:raw(" as "), qast:raw(Alias)])
+aliased_fields(TRef, Fields) ->
+    maps:map(fun(F, Opts) ->
+        qast:exp([
+            qast:alias(TRef), qast:raw([".", equery_utils:field_name(F)])
+        ], Opts)
     end, Fields).
-
-extract_data(TRef, #query{select=Fields}=Query) ->
-    FieldsAliases = gen_aliases(Fields),
-    TableData = maps:map(fun(_K, {Alias, Opts}) ->
-        qast:exp([qast:alias(TRef), qast:raw([".", Alias])], Opts)
-    end, FieldsAliases),
-    NewQuery = q:select(fun(S, _) -> apply_aliases(S, FieldsAliases) end, Query),
-    {TableData, NewQuery}.

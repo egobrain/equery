@@ -24,12 +24,11 @@ select(#query{
             limit=Limit,
             offset=Offset
          }) ->
-    {DistinctAst, RFields2} = distinct_exp(Distinct, RFields),
-    {Fields, Opts} = fields_and_opts(Schema, RFields2),
+    {Fields, Opts} = fields_and_opts(Schema, RFields),
     qast:exp([
         maybe_exp(WithExp),
         qast:raw("select "),
-        DistinctAst,
+        distinct_exp(Distinct, RFields),
         fields_exp(Fields),
         from_exp(Tables),
         joins_exp(Joins),
@@ -106,12 +105,19 @@ fields_and_opts(Schema, RFields) ->
         true ->
             RFieldsList = maps:to_list(RFields),
             Opts = #{type => type(Schema, RFieldsList)},
-            Values = maps:values(RFields);
+            Values = lists:map(fun({F, Ast}) ->
+                as(Ast, F)
+            end, RFieldsList);
         false ->
             Opts = qast:opts(RFields),
             Values = [RFields]
     end,
     {Values, Opts}.
+
+as(Value, Name) ->
+    qast:exp([
+        Value, qast:raw(" as "), qast:raw(equery_utils:field_name(Name))
+    ], qast:opts(Value)).
 
 fields_exp(FieldsExps) ->
     qast:join(FieldsExps, qast:raw(",")).
@@ -207,24 +213,19 @@ type(Schema, FieldsList) ->
 maybe_exp(undefined) -> qast:raw("");
 maybe_exp(Exp) -> Exp.
 
-distinct_exp(undefined, RFields) -> {qast:raw(""), RFields};
-distinct_exp(all, RFields) -> {qast:raw("distinct "), RFields};
+distinct_exp(undefined, _RFields) -> qast:raw("");
+distinct_exp(all, _RFields) -> qast:raw("distinct ");
 distinct_exp([], RFields) -> distinct_exp(undefined, RFields);
 distinct_exp(DistinctOn, RFields) when is_list(DistinctOn), is_map(RFields) ->
-    {DistinctAliases, RFields2} = lists:mapfoldl(fun(Field, RF) ->
-        FieldAst = maps:get(Field, RF),
-        Alias = qast:alias(make_ref()),
-        AliasedFieldAst = qast:exp([
-            FieldAst, qast:raw(" as "), Alias
-        ], qast:opts(FieldAst)),
-        {Alias, RF#{Field =>AliasedFieldAst}}
-    end, RFields, DistinctOn),
-    DistinctExp = qast:exp([
+    DistinctAliases = lists:map(fun(Field) ->
+        FieldAst = maps:get(Field, RFields),
+        qast:raw(equery_utils:field_name(Field), qast:opts(FieldAst))
+    end, DistinctOn),
+    qast:exp([
         qast:raw("distinct on ("),
         qast:join(DistinctAliases, qast:raw(",")),
         qast:raw(") ")
-    ]),
-    {DistinctExp, RFields2}.
+    ]).
 
 on_conflict_exp(Conflicts) ->
     lists:foldr(fun({ConflictTarget, ConflictAction}, Acc) ->
