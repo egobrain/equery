@@ -30,12 +30,17 @@
         ]).
 
 -export([
+         call/3
+        ]).
+
+-export([
          sum/1,
          count/1,
          min/1,
          max/1,
          distinct/1,
-         array_agg/1
+         array_agg/1,
+         trunc/2
         ]).
 
 -export([
@@ -152,30 +157,34 @@ ilike(A, B) ->
 
 -spec sum(qast:ast_node()) -> qast:ast_node().
 sum(Ast) ->
-    qast:exp([qast:raw("sum("), Ast, qast:raw(")")], qast:opts(Ast)).
+    call("sum", [Ast], qast:opts(Ast)).
 
 -spec count(qast:ast_node()) -> qast:ast_node().
 count(Ast) ->
-    qast:exp([qast:raw("count("), Ast, qast:raw(")")], #{type => integer}).
+    call("count", [Ast], #{type => integer}).
 
 -spec 'min'(value()) -> qast:ast_node().
-min(A) ->
-    qast:exp([qast:raw("min("), A, qast:raw(")")], qast:opts(A)).
+min(Ast) ->
+    call("min", [Ast], qast:opts(Ast)).
 
 -spec 'max'(value()) -> qast:ast_node().
-max(A) ->
-    qast:exp([qast:raw("max("), A, qast:raw(")")], qast:opts(A)).
+max(Ast) ->
+    call("max", [Ast], qast:opts(Ast)).
 
 -spec 'distinct'(value()) -> qast:ast_node().
-distinct(A) ->
-    qast:exp([qast:raw("distinct ("), A, qast:raw(")")], qast:opts(A)).
+distinct(Ast) ->
+    call("distinct ", [Ast], qast:opts(Ast)).
 
 -spec 'array_agg'(value()) -> qast:ast_node().
-array_agg(A) ->
-    Opts = qast:opts(A),
+array_agg(Ast) ->
+    Opts = qast:opts(Ast),
     Type = maps:get(type, Opts, undefined),
     NewOpts = Opts#{type => {array, Type}},
-    qast:exp([qast:raw("array_agg("), A, qast:raw(")")], NewOpts).
+    call("array_agg", [Ast], NewOpts).
+
+-spec 'trunc'(value(), qast:ast_node() | non_neg_integer()) -> qast:ast_node().
+'trunc'(V, N) ->
+    call("trunc", [V, N], qast:opts(V)).
 
 %% = Math ======================================================================
 
@@ -214,6 +223,14 @@ in(A, #query{}=Q) ->
     qast:exp([A, qast:raw(" in ("), qsql:select(Q), qast:raw(")")], #{type => boolean});
 in(A, B) ->
     qast:exp([A, qast:raw(" = ANY("), B, qast:raw(")")], #{type => boolean}).
+
+-spec call(iolist(), [value()], qast:opts()) -> qast:ast_node().
+call(FunName, Args, Opts) ->
+    qast:exp([
+        qast:raw([FunName, "("]),
+        qast:join(Args, qast:raw(",")),
+        qast:raw(")")
+    ], Opts).
 
 %% = Array oprterations ========================================================
 
@@ -254,7 +271,6 @@ to_iodata(Float) when is_float(Float) ->
 
 join([], _) -> [];
 join([H|T],Sep) -> [H|[[Sep,E]||E<-T]].
-
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").

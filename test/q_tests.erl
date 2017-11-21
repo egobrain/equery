@@ -602,6 +602,15 @@ abs_test() ->
          {<<"abs(h)">>, []},
          qast:to_sql(pg_sql:'abs'(Node))).
 
+trunc_test() ->
+    Node = qast:raw("v"),
+    ?assertEqual(
+         {<<"trunc(v,2)">>, []},
+         qast:to_sql(pg_sql:'trunc'(Node, qast:raw("2")))),
+    ?assertEqual(
+         {<<"trunc(v,$1)">>, [2]},
+         qast:to_sql(pg_sql:'trunc'(Node, 2))).
+
 ops_test_() ->
     Tests = [
         {fun pg_sql:max/2, "GREATEST"},
