@@ -32,7 +32,7 @@
 -type model() :: schema() | module().
 -type query() :: #query{}.
 -type table() :: {alias, qast:alias(), #{atom() => term()}}.
--type schema() :: #{fields => #{atom() => #{atom() => term()}}, table => binary()}.
+-type schema() :: #{fields => #{atom() => #{atom() => term()}}, table => binary(), atom() => any()}.
 -type data() :: [#{atom() => qast:ast_node()}].
 -type select() :: #{atom() => qast:ast_node()} | qast:ast_node().
 -type set() :: #{atom() => qast:ast_node()}.
