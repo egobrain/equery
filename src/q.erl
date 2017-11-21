@@ -29,6 +29,10 @@
          distinct_on/1, distinct_on/2
         ]).
 
+-export([
+         compile/1
+        ]).
+
 -type model() :: schema() | module().
 -type query() :: #query{}.
 -type table() :: {alias, qast:alias(), #{atom() => term()}}.
@@ -341,6 +345,8 @@ distinct_on(Fun, #query{data=Data}=Q) ->
     Distinct = call(Fun, [Data]),
     is_list(Distinct) orelse error(bad_list),
     Q#query{distinct = Distinct}.
+
+compile(Fun) -> call(Fun, []).
 
 %% =============================================================================
 %% Internal functions
