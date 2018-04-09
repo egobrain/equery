@@ -86,7 +86,7 @@ from(Info) when is_map(Info); is_atom(Info) ->
         tables=[RealTable]
      };
 from(#query{}=Query) ->
-    from(qsql:select(Query));
+    from(braced(qsql:select(Query)));
 from(Ast) ->
     #{type := {model, Model, FieldsList}} = qast:opts(Ast),
     TRef = make_ref(),
@@ -105,7 +105,7 @@ from(Ast) ->
 
 as(VAst, AsAst) ->
     qast:exp([
-        qast:raw("("), VAst, qast:raw(") as "), AsAst
+        VAst, qast:raw(" as "), AsAst
     ], qast:opts(VAst)).
 
 using(Info) -> fun(Q) -> using(Info, Q) end.
@@ -363,3 +363,8 @@ aliased_fields(TRef, Fields) ->
             qast:alias(TRef), qast:raw([".", equery_utils:field_name(F)])
         ], Opts)
     end, Fields).
+
+braced(QAst) ->
+    qast:exp([
+        qast:raw("("), QAst, qast:raw(")")
+    ], qast:opts(QAst)).
