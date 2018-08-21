@@ -21,7 +21,7 @@
          data/1, data/2,
          group_by/1, group_by/2,
          on_conflict/2, on_conflict/3,
-         order_by/1,
+         order_by/1, order_by/2,
          limit/1, limit/2,
          offset/1, offset/2,
 
