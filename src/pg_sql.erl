@@ -13,6 +13,7 @@
          '<'/2,
          '=<'/2,
          'not'/1,
+         'is'/2,
          is_null/1,
 
          '+'/2,
@@ -118,9 +119,13 @@
 '=<'(A, B) ->
     qast:exp([qast:raw("("), A, qast:raw(" <= "), B, qast:raw(")")], #{type => boolean}).
 
+-spec 'is'(value(), value()) -> qast:ast_node().
+is(A, B) ->
+    qast:exp([A, qast:raw(" is "), B], #{type => boolean}).
+
 -spec 'is_null'(value()) -> qast:ast_node().
 is_null(A) ->
-    qast:exp([A, qast:raw(" is null")], #{type => boolean}).
+    is(A, qast:raw("null")).
 
 %% @TODO type opts
 -spec '+'(value(), value()) -> qast:ast_node().
