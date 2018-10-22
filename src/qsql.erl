@@ -42,6 +42,31 @@ select(#query{
 -spec insert(q:query()) -> qast:ast_node().
 insert(#query{
             schema=Schema,
+            with=WithExp,
+            tables=[{real, Table, TRef}|Rest],
+            select=RFields,
+            set = #query{} = Query,
+            on_conflict=OnConflict
+    }) ->
+    Rest =:= [] orelse error("Unsupported query using operation. See q:using/[1,2]"),
+    SelectAst = select(Query),
+    #{type := {model, _, SetFields}} = qast:opts(SelectAst),
+    {Fields, Opts} = fields_and_opts(Schema, RFields),
+    qast:exp([
+        maybe_exp(WithExp),
+        qast:raw(["insert into ", Table, " as "]),
+        qast:alias(TRef),
+        qast:raw(" ("),
+        fields_exp([
+            qast:exp([qast:raw(equery_utils:field_name(F))], qast:opts(V)) || {F, V} <- SetFields
+        ]),
+        qast:raw([") "]),
+        SelectAst,
+        on_conflict_exp(OnConflict),
+        returning_exp(Fields)
+    ], Opts);
+insert(#query{
+            schema=Schema,
             tables=[{real, Table, TRef}|Rest],
             select=RFields,
             set=Set,

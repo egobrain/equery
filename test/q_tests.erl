@@ -183,6 +183,44 @@ q_insert_test() ->
         Sql),
     ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST}, ReturningFields).
 
+q_insert_from_test() ->
+    DeleteQ = qsql:delete(q:where(fun([#{id := Id}]) -> Id =:= 1 end, q:from(?MODULE))),
+    {Sql, Args, ReturningFields} = to_sql(
+        qsql:insert(q:with(DeleteQ, fun(Alias) ->
+            q:set(fun(_) ->
+                q:select(fun(S, _) ->
+                    S#{id => qast:raw(<<"15">>)}
+                end, q:from(Alias))
+            end)
+        end, q:from(?MODULE)))
+    ),
+    ?assertEqual(
+         <<"with \"__alias-0\" as ("
+               "delete from \"users\" as \"__alias-1\" "
+               "where (\"__alias-1\".\"id\" = $1) "
+               "returning "
+                   "\"__alias-1\".\"id\" as \"id\","
+                   "\"__alias-1\".\"name\" as \"name\","
+                   "\"__alias-1\".\"password\" as \"password\","
+                   "\"__alias-1\".\"salt\" as \"salt\") "
+           "insert into \"users\" as \"__alias-2\" ("
+               "\"id\",\"name\",\"password\",\"salt\""
+           ") select "
+               "15 as \"id\","
+               "\"__alias-0\"."
+               "\"name\" as \"name\","
+               "\"__alias-0\".\"password\" as \"password\","
+               "\"__alias-0\".\"salt\" as \"salt\" "
+               "from \"__alias-0\" "
+           "returning "
+               "\"__alias-2\".\"id\" as \"id\","
+               "\"__alias-2\".\"name\" as \"name\","
+               "\"__alias-2\".\"password\" as \"password\","
+               "\"__alias-2\".\"salt\" as \"salt\"">>,
+         Sql),
+    ?assertEqual([1], Args),
+    ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST}, ReturningFields).
+
 q_upsert_test() ->
     {Sql, Args, ReturningFields} = to_sql(
         qsql:insert(q:pipe(q:from(?MODULE), [

@@ -87,6 +87,18 @@ from(Info) when is_map(Info); is_atom(Info) ->
      };
 from(#query{}=Query) ->
     from(braced(qsql:select(Query)));
+from({alias, _AliasExp, FieldsExp}=Alias) ->
+    Fields = maps:map(
+        fun(_N, Ast) -> qast:opts(Ast) end,
+        FieldsExp),
+    #query{
+        schema = #{
+            fields => Fields
+        },
+        tables = [Alias],
+        select = FieldsExp,
+        data = [FieldsExp]
+    };
 from(Ast) ->
     #{type := {model, Model, FieldsList}} = qast:opts(Ast),
     TRef = make_ref(),
@@ -272,13 +284,16 @@ set(Fun) -> fun(Q) -> set(Fun, Q) end.
       Q :: query().
 set(Fun, #query{data=Data}=Q) when is_function(Fun, 1) ->
     Set = call(Fun, [Data]),
-    is_map(Set) orelse error(bad_map),
+    check_set(Set),
     Q#query{set=Set};
 set(Fun, #query{set=PrevSet, data=Data}=Q) when is_function(Fun, 2) ->
     Set = call(Fun, [PrevSet, Data]),
-    is_map(Set) orelse error(bad_map),
+    check_set(Set),
     Q#query{set=Set}.
 
+check_set(#query{}) -> ok;
+check_set(Map) when is_map(Map) -> ok;
+check_set(_) -> error(bad_set).
 
 -spec group_by(fun((data()) -> qast:ast_node())) -> qfun().
 group_by(Fun) -> fun(Q) -> group_by(Fun, Q) end.
