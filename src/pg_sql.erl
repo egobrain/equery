@@ -226,6 +226,8 @@ coalesce([H|_]=List) ->
 
 in(A, #query{}=Q) ->
     qast:exp([A, qast:raw(" in ("), qsql:select(Q), qast:raw(")")], #{type => boolean});
+in(A, [Item]) ->
+    '=:='(A, Item);
 in(A, B) ->
     qast:exp([A, qast:raw(" = ANY("), B, qast:raw(")")], #{type => boolean}).
 
