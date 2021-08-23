@@ -39,13 +39,13 @@
 -type schema() :: #{fields => #{atom() => #{atom() => term()}}, table => binary(), atom() => any()}.
 -type data() :: [#{atom() => qast:ast_node()}].
 -type select() :: #{atom() => qast:ast_node()} | qast:ast_node().
--type set() :: #{atom() => qast:ast_node()}.
+-type set() :: #{atom() => qast:ast_node()} | query().
 -type order() :: [{qast:ast_node(), asc | desc}].
 -type distinct() :: all | [atom()].
 -type join_type() :: inner | left | right | full | {left, outer} | {right, outer} | {full, outer}.
 -type qfun() :: fun((query()) -> query()).
 -type conflict_target() :: any | [atom()].
--type conflict_action() :: nothing | set().
+-type conflict_action() :: nothing | #{atom() => qast:ast_node()}.
 
 -export_type([query/0]).
 
