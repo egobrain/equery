@@ -35,7 +35,7 @@
 
 -type model() :: schema() | module().
 -type query() :: #query{}.
--type table() :: {alias, qast:alias(), #{atom() => term()}}.
+-type table() :: {alias, qast:ast_node(), #{atom() => term()}}.
 -type schema() :: #{fields => #{atom() => #{atom() => term()}}, table => binary(), atom() => any()}.
 -type data() :: [#{atom() => qast:ast_node()}].
 -type select() :: #{atom() => qast:ast_node()} | qast:ast_node().
@@ -51,11 +51,13 @@
 
 -export_type([
          model/0,
+         table/0,
          schema/0,
          data/0,
          select/0,
          set/0,
          order/0,
+         distinct/0,
          join_type/0,
          qfun/0,
          conflict_target/0,
