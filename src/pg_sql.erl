@@ -229,7 +229,7 @@ in(A, #query{}=Q) ->
 in(A, B) ->
     qast:exp([A, qast:raw(" = ANY("), B, qast:raw(")")], #{type => boolean}).
 
--spec call(iolist(), [value()], qast:opts()) -> qast:ast_node().
+-spec call(iodata(), [value()], qast:opts()) -> qast:ast_node().
 call(FunName, Args, Opts) ->
     qast:exp([
         qast:raw([FunName, "("]),
