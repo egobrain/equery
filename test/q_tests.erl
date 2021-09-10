@@ -722,11 +722,13 @@ exists_test() ->
         qsql:select(q:pipe(q:from(?MODULE), [
             q:where(fun([#{id := Id}]) ->
                 pg_sql:exists(q:where(
-                    fun([#{id := Id1}]) ->
-                        Id1 =:= Id
+                    fun([#{author := AuthorId}]) ->
+                        AuthorId =:= Id
                     end,
-                    q:pipe(q:from(?MODULE), [
-                        q:select(fun([#{id := IId}]) -> pg_sql:max(IId) end)
+                    q:pipe(q:from(?COMMENT_SCHEMA), [
+                        q:select(fun(_) ->
+                            qast:raw(<<"1">>)
+                        end)
                     ])
                 ))
             end),
@@ -735,8 +737,8 @@ exists_test() ->
     ?assertEqual(
             <<"select \"__alias-0\".\"name\" as \"name\" from \"users\" as \"__alias-0\" where "
               "exists ("
-                  "select max(\"__alias-1\".\"id\") from \"users\" as \"__alias-1\" where "
-                      "(\"__alias-1\".\"id\" = \"__alias-0\".\"id\")"
+                  "select 1 from \"comments\" as \"__alias-1\" where "
+                      "(\"__alias-1\".\"author\" = \"__alias-0\".\"id\")"
               ")">>,
          Sql),
     ?assertEqual([], Args),
