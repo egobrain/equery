@@ -53,7 +53,8 @@
 
 -export([
          coalesce/1,
-         in/2
+         in/2,
+         exists/1
         ]).
 
 %% Array functions
@@ -230,6 +231,9 @@ in(A, [Item]) ->
     '=:='(A, Item);
 in(A, B) ->
     qast:exp([A, qast:raw(" = ANY("), B, qast:raw(")")], #{type => boolean}).
+
+exists(#query{}=Q) ->
+    qast:exp([qast:raw("exists ("), qsql:select(Q), qast:raw(")")], #{type => boolean}).
 
 -spec call(iodata(), [value()], qast:opts()) -> qast:ast_node().
 call(FunName, Args, Opts) ->

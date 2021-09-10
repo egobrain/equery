@@ -717,6 +717,31 @@ in_query_test() ->
     ?assertEqual([[1,2]], Args),
     ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST}, ReturningFields).
 
+exists_test() ->
+    {Sql, Args, Feilds} = to_sql(
+        qsql:select(q:pipe(q:from(?MODULE), [
+            q:where(fun([#{id := Id}]) ->
+                pg_sql:exists(q:where(
+                    fun([#{id := Id1}]) ->
+                        Id1 =:= Id
+                    end,
+                    q:pipe(q:from(?MODULE), [
+                        q:select(fun([#{id := IId}]) -> pg_sql:max(IId) end)
+                    ])
+                ))
+            end),
+            q:select(fun([T]) -> maps:with([name], T) end)
+        ]))),
+    ?assertEqual(
+            <<"select \"__alias-0\".\"name\" as \"name\" from \"users\" as \"__alias-0\" where "
+              "exists ("
+                  "select max(\"__alias-1\".\"id\") from \"users\" as \"__alias-1\" where "
+                      "(\"__alias-1\".\"id\" = \"__alias-0\".\"id\")"
+              ")">>,
+         Sql),
+    ?assertEqual([], Args),
+    ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST([name])}, Feilds).
+
 '@>_test'() ->
     {Sql, Args, ReturningFields} = to_sql(
         qsql:select(q:pipe(q:from(?MODULE), [
