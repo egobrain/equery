@@ -717,6 +717,33 @@ in_query_test() ->
     ?assertEqual([[1,2]], Args),
     ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST}, ReturningFields).
 
+exists_test() ->
+    {Sql, Args, Feilds} = to_sql(
+        qsql:select(q:pipe(q:from(?MODULE), [
+            q:where(fun([#{id := Id}]) ->
+                pg_sql:exists(q:where(
+                    fun([#{author := AuthorId}]) ->
+                        AuthorId =:= Id
+                    end,
+                    q:pipe(q:from(?COMMENT_SCHEMA), [
+                        q:select(fun(_) ->
+                            qast:raw(<<"1">>)
+                        end)
+                    ])
+                ))
+            end),
+            q:select(fun([T]) -> maps:with([name], T) end)
+        ]))),
+    ?assertEqual(
+            <<"select \"__alias-0\".\"name\" as \"name\" from \"users\" as \"__alias-0\" where "
+              "exists ("
+                  "select 1 from \"comments\" as \"__alias-1\" where "
+                      "(\"__alias-1\".\"author\" = \"__alias-0\".\"id\")"
+              ")">>,
+         Sql),
+    ?assertEqual([], Args),
+    ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST([name])}, Feilds).
+
 '@>_test'() ->
     {Sql, Args, ReturningFields} = to_sql(
         qsql:select(q:pipe(q:from(?MODULE), [
