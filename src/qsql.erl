@@ -22,7 +22,8 @@ select(#query{
             group_by=GroupBy,
             order_by=OrderBy,
             limit=Limit,
-            offset=Offset
+            offset=Offset,
+            for_update=ForUpdate
          }) ->
     {Fields, Opts} = fields_and_opts(Schema, RFields),
     qast:exp([
@@ -36,7 +37,8 @@ select(#query{
         group_by_exp(GroupBy),
         order_by_exp(OrderBy),
         limit_exp(Limit),
-        offset_exp(Offset)
+        offset_exp(Offset),
+        for_update(ForUpdate)
     ], Opts).
 
 -spec insert(q:query()) -> qast:ast_node().
@@ -283,3 +285,9 @@ conflict_action_exp(Set) when is_map(Set) ->
             ]) || {F, Node} <- maps:to_list(Set)
         ], qast:raw(","))
     ]).
+
+for_update(true) ->
+    qast:raw(" for update");
+for_update(false) ->
+    qast:raw("").
+

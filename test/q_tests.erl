@@ -79,7 +79,8 @@ q_test() ->
             q:order_by(
                 fun([#{name := Name, id := Id}|_]) ->
                     [{Name, asc}, {Id, desc}]
-                end)
+                end),
+            q:for_update()
         ]))),
     ?assertEqual(
          <<"select "
@@ -91,7 +92,8 @@ q_test() ->
            "inner join \"comments\" as \"__alias-1\" "
            "on (\"__alias-0\".\"id\" = \"__alias-1\".\"author\") "
            "where ((\"__alias-0\".\"name\" = $1) and (\"__alias-1\".\"text\" = $2)) "
-           "order by \"__alias-0\".\"name\" ASC,\"__alias-0\".\"id\" DESC">>,
+           "order by \"__alias-0\".\"name\" ASC,\"__alias-0\".\"id\" DESC "
+           "for update">>,
          Sql),
     ?assertEqual([<<"test1">>, <<"test2">>], Args),
     ?assertEqual({model, undefined, ?USER_FIELDS_LIST}, Feilds).

@@ -24,6 +24,7 @@
          order_by/1, order_by/2,
          limit/1, limit/2,
          offset/1, offset/2,
+         for_update/0, for_update/1,
 
          distinct/0, distinct/1,
          distinct_on/1, distinct_on/2
@@ -338,6 +339,12 @@ offset(Value) -> fun(Q) -> offset(Value, Q) end.
 offset(Value, Q) ->
     Q#query{offset=Value}.
 
+-spec for_update() -> qfun().
+for_update() -> fun(Q) -> for_update(Q) end.
+
+-spec for_update(Q) -> Q when Q :: query().
+for_update(Q) ->
+    Q#query{for_update=true}.
 
 -spec data(fun((data()) -> data())) -> qfun().
 data(Fun) -> fun(Q) -> data(Fun, Q) end.
