@@ -88,13 +88,18 @@ traverse_(_Fun, State, Ast) ->
     {Ast, State}.
 
 transform_fun(Fun) ->
-    {env, Env} = erlang:fun_info(Fun, env),
-    case Env of
-        [{Bindings, _, _, Ast}] ->
-            Exprs = erl_syntax:revert(?func(compile(Ast))),
-            {value, Fun2, _} = erl_eval:expr(Exprs, Bindings),
-            Fun2;
-        _ -> Fun
+    case erlang:fun_info(Fun, module) of
+        {module, erl_eval} ->
+            {env, Env} = erlang:fun_info(Fun, env),
+            case Env of
+                [{Bindings, {eval, _}, {value, _}, Ast}] ->
+                    Exprs = erl_syntax:revert(?func(compile(Ast))),
+                    {value, Fun2, _} = erl_eval:expr(Exprs, Bindings),
+                    Fun2;
+                _ -> Fun
+            end;
+        _ ->
+            Fun
     end.
 
 %% =============================================================================
