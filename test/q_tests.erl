@@ -4,6 +4,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 -include_lib("equery/include/equery.hrl").
+-include_lib("equery/include/cth.hrl").
 
 -define(USER_SCHEMA, #{
         fields => #{
@@ -20,9 +21,9 @@
 -define(USER_FIELDS, maps:get(fields, ?USER_SCHEMA)).
 -define(USER_FIELDS(L), maps:with(L, ?USER_FIELDS)).
 -define(USER_FIELDS_WITHOUT(L), maps:without(L, ?USER_FIELDS)).
--define(USER_FIELDS_LIST, maps:to_list(?USER_FIELDS)).
--define(USER_FIELDS_LIST(L), maps:to_list(?USER_FIELDS(L))).
--define(USER_FIELDS_LIST_WITHOUT(L), maps:to_list(maps:without(L, ?USER_FIELDS))).
+-define(USER_FIELDS_LIST, ?MAPS_TO_LIST(?USER_FIELDS)).
+-define(USER_FIELDS_LIST(L), ?MAPS_TO_LIST(?USER_FIELDS(L))).
+-define(USER_FIELDS_LIST_WITHOUT(L), ?MAPS_TO_LIST(maps:without(L, ?USER_FIELDS))).
 
 -define(COMMENT_SCHEMA, #{
         fields => #{
@@ -37,11 +38,11 @@
     }).
 
 -define(TREE_FIELDS, maps:get(fields, tree_m:schema())).
--define(TREE_FIELDS_LIST, maps:to_list(?TREE_FIELDS)).
+-define(TREE_FIELDS_LIST, ?MAPS_TO_LIST(?TREE_FIELDS)).
 
 -define(COMMENT_FIELDS, maps:get(fields, ?COMMENT_SCHEMA)).
--define(COMMENT_FIELDS_LIST, maps:to_list(?COMMENT_FIELDS)).
--define(COMMENT_FIELDS_LIST_WITHOUT(L), maps:to_list(maps:without(L, ?COMMENT_FIELDS))).
+-define(COMMENT_FIELDS_LIST, ?MAPS_TO_LIST(?COMMENT_FIELDS)).
+-define(COMMENT_FIELDS_LIST_WITHOUT(L), ?MAPS_TO_LIST(maps:without(L, ?COMMENT_FIELDS))).
 
 schema() -> ?USER_SCHEMA.
 
@@ -120,10 +121,10 @@ q_from_query_test() ->
            "where (\"__alias-0\".\"num\" > $2)">>,
          Sql),
     ?assertEqual([2,10], Args),
-    ?assertEqual({model, undefined, [
+    ?assertEqual({model, undefined, lists:sort([
         {n,#{}},
         {user,#{required => true, type => {varchar, 60}}}
-    ]}, Feilds).
+    ])}, Feilds).
 
 q_compile_test() ->
     {Sql, Args, Feilds} = to_sql(
@@ -165,11 +166,11 @@ q_compile_test() ->
            "(\"__alias-1\".\"text\" = $5))">>,
          Sql),
     ?assertEqual([3,<<"test1">>,<<"test2">>,<<"test1">>,<<"test2">>], Args),
-    ?assertEqual({model, ?MODULE, [
+    ?assertEqual({model, ?MODULE, lists:sort([
         {'_id_gt',#{type => boolean}},
         {filter,#{type => boolean}}
         | ?USER_FIELDS_LIST
-    ]}, Feilds).
+    ])}, Feilds).
 
 q_insert_test() ->
     {Sql, _Args, ReturningFields} = to_sql(

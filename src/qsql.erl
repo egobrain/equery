@@ -1,6 +1,7 @@
 -module(qsql).
 
 -include("query.hrl").
+-include("cth.hrl").
 
 -export([
          select/1,
@@ -8,7 +9,6 @@
          update/1,
          delete/1
         ]).
-
 
 -spec select(q:query()) -> qast:ast_node().
 select(#query{
@@ -77,7 +77,7 @@ insert(#query{
     Rest =:= [] orelse error("Unsupported query using operation. See q:using/[1,2]"),
     {Fields, Opts} = fields_and_opts(Schema, RFields),
     {SetKeys, SetValues} = lists:unzip([
-        {{K, qast:opts(V)}, V} || {K, V} <- maps:to_list(Set)
+        {{K, qast:opts(V)}, V} || {K, V} <- ?MAPS_TO_LIST(Set)
     ]),
     qast:exp([
         qast:raw(["insert into ", Table, " as "]),
@@ -103,7 +103,7 @@ update(#query{schema=Schema, tables=[{real, Table, TRef}|Rest], select=RFields, 
         qast:join([
             qast:exp([
                 qast:raw([equery_utils:field_name(F), " = "]), Node
-            ]) || {F, Node} <- maps:to_list(Set)
+            ]) || {F, Node} <- ?MAPS_TO_LIST(Set)
         ], qast:raw(",")),
         from_exp(Rest),
         where_exp(Where),
@@ -130,7 +130,7 @@ delete(#query{schema=Schema, tables=[{real, Table, TRef}|Rest], select=RFields, 
 fields_and_opts(Schema, RFields) ->
     case is_map(RFields) of
         true ->
-            RFieldsList = maps:to_list(RFields),
+            RFieldsList = ?MAPS_TO_LIST(RFields),
             Opts = #{type => type(Schema, RFieldsList)},
             Values = lists:map(fun({F, Ast}) ->
                 as(Ast, F)
@@ -263,7 +263,7 @@ on_conflict_exp(Conflicts) ->
             qast:raw("do "),
             conflict_action_exp(ConflictAction)
         ])
-    end, qast:raw(""), maps:to_list(Conflicts)).
+    end, qast:raw(""), ?MAPS_TO_LIST(Conflicts)).
 
 conflict_target_exp(any) -> qast:raw(" ");
 conflict_target_exp(Columns) when is_list(Columns) ->
@@ -282,7 +282,7 @@ conflict_action_exp(Set) when is_map(Set) ->
         qast:join([
             qast:exp([
                 qast:raw([equery_utils:field_name(F), " = "]), Node
-            ]) || {F, Node} <- maps:to_list(Set)
+            ]) || {F, Node} <- ?MAPS_TO_LIST(Set)
         ], qast:raw(","))
     ]).
 
@@ -290,4 +290,3 @@ for_update(true) ->
     qast:raw(" for update");
 for_update(false) ->
     qast:raw("").
-
