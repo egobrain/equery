@@ -127,16 +127,18 @@ q_from_query_test() ->
     ])}, Feilds).
 
 q_compile_test() ->
+    WhereFun = q:compile(fun() ->
+        fun([#{name := Name, filter := F}]) ->
+            Name =:= <<"test2">> orelse F
+        end
+    end),
     {Sql, Args, Feilds} = to_sql(
         qsql:select(q:pipe(q:from(?MODULE), [
             q:data(
                 fun([#{name := Name}=TD]) ->
                     [TD#{filter => Name =:= <<"test1">>}]
                 end),
-            q:where(
-                fun([#{name := Name, filter := F}]) ->
-                    Name =:= <<"test2">> orelse F
-                end),
+            q:where(WhereFun),
             q:join(?COMMENT_SCHEMA,
                 fun([#{id := UserId}, #{author := AuthorId}]) ->
                     UserId =:= AuthorId
@@ -523,6 +525,7 @@ operators_test() ->
                Id =/= 7 andalso
                not Id * 1 + 2 - 3 / 4 orelse
                pg_sql:in(Id, [8,9,10]) orelse
+               pg_sql:in(Id, [11]) orelse
                pg_sql:like(Id, <<"11%">>) orelse
                pg_sql:ilike(Id, <<"11%">>) orelse
                pg_sql:'~'(Id, <<"a">>) orelse
@@ -531,20 +534,21 @@ operators_test() ->
             q:select(fun([T]) -> maps:with([name], T) end)
         ]))),
     ?assertEqual(
-            <<"select \"__alias-0\".\"name\" as \"name\" from \"users\" as \"__alias-0\" where "
-              "(((\"__alias-0\".\"id\" < $1) and "
-              "(\"__alias-0\".\"id\" <= $2)) or "
-              "(((\"__alias-0\".\"id\" > $3) and "
-              "(\"__alias-0\".\"id\" >= $4)) or "
-              "((not (\"__alias-0\".\"id\" = $5) and "
-              "(((not \"__alias-0\".\"id\" * $6) + $7) - ($8 / $9))) or "
-              "(\"__alias-0\".\"id\" = ANY($10) or "
-              "(\"__alias-0\".\"id\" like $11 or "
-              "(\"__alias-0\".\"id\" ilike $12 or "
-              "((\"__alias-0\".\"id\" ~ $13) or "
-              "(\"__alias-0\".\"id\" ~* $14))))))))">>,
+             <<"select \"__alias-0\".\"name\" as \"name\" from \"users\" as \"__alias-0\" where "
+               "(((\"__alias-0\".\"id\" < $1) and "
+               "(\"__alias-0\".\"id\" <= $2)) or "
+               "(((\"__alias-0\".\"id\" > $3) and "
+               "(\"__alias-0\".\"id\" >= $4)) or "
+               "((not (\"__alias-0\".\"id\" = $5) and "
+               "(((not \"__alias-0\".\"id\" * $6) + $7) - ($8 / $9))) or "
+               "(\"__alias-0\".\"id\" = ANY($10) or "
+               "((\"__alias-0\".\"id\" = $11) or "
+               "(\"__alias-0\".\"id\" like $12 or "
+               "(\"__alias-0\".\"id\" ilike $13 or "
+               "((\"__alias-0\".\"id\" ~ $14) or "
+               "(\"__alias-0\".\"id\" ~* $15)))))))))">>,
          Sql),
-    ?assertEqual([3,4,5,6,7,1,2,3,4,[8,9,10],<<"11%">>,<<"11%">>,<<"a">>,<<"A">>], Args),
+    ?assertEqual([3,4,5,6,7,1,2,3,4,[8,9,10],11,<<"11%">>,<<"11%">>,<<"a">>,<<"A">>], Args),
     ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST([name])}, Feilds).
 
 distinct_operation_test() ->
@@ -789,7 +793,14 @@ transform_fun_test() ->
     TFun = equery_pt:transform_fun(Fun),
     {Sql, Args} = qast:to_sql(TFun(3)),
     ?assertEqual(<<"not ($1 = $2)">>, Sql),
-    ?assertEqual([3,2], Args).
+    ?assertEqual([3,2], Args),
+
+    %% check some erl_eval functions
+    EvalStr = equery_pt:transform_fun(fun erl_eval:eval_str/1),
+    {ok, TFunR} = EvalStr(FunS ++ "\r\n"),
+    {SqlR, ArgsR} = qast:to_sql((equery_pt:transform_fun(TFunR))(3)),
+    ?assertEqual(<<"not ($1 = $2)">>, SqlR),
+    ?assertEqual([3,2], ArgsR).
 
 join_type_test_() ->
     Q = q:from(?USER_SCHEMA),
@@ -924,6 +935,9 @@ drop_distinct_on_test() ->
            "from \"users\" as \"__alias-0\"">>, Sql),
     ?assertEqual([], Args),
     ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST}, Feilds).
+
+bad_set_test() ->
+    ?assertException(error, bad_set, q:set(fun(_) -> bad end, q:from(?MODULE))).
 
 %% =============================================================================
 %% Internal functions
