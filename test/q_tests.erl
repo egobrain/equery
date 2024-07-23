@@ -771,7 +771,7 @@ pt_test() ->
     {module, M} = code:load_binary(M, "", ModuleBin),
     Q = q:from(M),
     ?assertEqual(
-         {<<"select ""\"__alias-0\".\"id\" as \"id\" from \"test\" as \"__alias-0\" where "
+         {<<"select \"__alias-0\".\"id\" as \"id\" from \"test\" as \"__alias-0\" where "
             "(\"__alias-0\".\"id\" > $1)">>,
           [3]},
          qast:to_sql(qsql:select(M:filter(3, Q)))),
