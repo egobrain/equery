@@ -12,9 +12,7 @@ wrap(F) ->
 
 -spec field_name(atom()) -> iolist().
 field_name(Atom) when is_atom(Atom) ->
-    wrap(atom_to_list(Atom));
-field_name(Bin) when is_binary(Bin) ->
-    wrap(Bin).
+    wrap(atom_to_list(Atom)).
 
 to_binary(Atom) when is_atom(Atom) ->
     atom_to_binary(Atom, latin1);
