@@ -1,0 +1,20 @@
+# create this in .github/workflows/ci.yml
+on: push
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    name: Erlang/OTP ${{matrix.otp}} / rebar3 ${{matrix.rebar3}}
+    strategy:
+      matrix:
+        otp: ['24.3', '25.3', '26.2', '27.0']
+        rebar3: ['3.23.0']
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: ${{matrix.otp}}
+          rebar3-version: ${{matrix.rebar3}}
+      - run: rebar3 do xref,eunit,coveralls send

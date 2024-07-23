@@ -1,6 +1,7 @@
 -module(pg_sql).
 
 -include("query.hrl").
+-include("cth.hrl").
 
 -export([
          'andalso'/2,
@@ -210,7 +211,7 @@ row(Fields) when is_map(Fields) ->
 
 -spec row(Model :: module(), #{atom() => qast:ast_node()}) -> qast:ast_node().
 row(Model, Fields) when is_map(Fields) ->
-    FieldsList = maps:to_list(Fields),
+    FieldsList = ?MAPS_TO_LIST(Fields),
     Type = {record, {model, Model, [{F, qast:opts(Node)} || {F, Node} <- FieldsList]}},
     qast:exp([
         qast:raw("row("),

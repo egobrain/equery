@@ -7,6 +7,12 @@
 
 -include("ast_helpers.hrl").
 
+-if(?OTP_RELEASE >= 25).
+-define(FUN_ENV_MATCH(FBs, FCs), {_FAnno, FBs, _FLf, _FEf, _FUVs, FCs}).
+-else.
+-define(FUN_ENV_MATCH(FBs, FCs), {FBs, _FLf, _FEf, FCs}).
+-endif.
+
 -record(state, {}).
 
 parse_transform(Ast, _Opts) ->
@@ -56,24 +62,25 @@ compile(Clauses) ->
     {Clauses2, _St} = compile(Clauses, #state{}),
     Clauses2.
 
-compile([{clause, _Line, [Cons], [], [Exp]}], St) ->
-    {[{clause, _Line, [Cons], [], [where_exp(Exp)]}], St};
+compile([{clause, _ColLine, [Cons], [], [Exp]}], St) ->
+    {[{clause, _ColLine, [Cons], [], [where_exp(Exp)]}], St};
 compile(Ast, St) -> {where_exp(Ast), St}.
 
 where_exp(Ast) ->
     {NewAst, _State} =
         traverse_(
-            fun({op, _L, Op, A, B} = Node, S) ->
+            fun({op, _CL, Op, A, B} = Node, S) ->
                 case erlang:function_exported(pg_sql, Op, 2) of
                     true -> {erl_syntax:revert(?apply(pg_sql, Op, [A,B])), S};
                     false -> {Node, S}
                 end;
-               ({op, _L, Op, A} = Node, S) ->
+               ({op, _CL, Op, A} = Node, S) ->
                 case erlang:function_exported(pg_sql, Op, 1) of
                     true -> {erl_syntax:revert(?apply(pg_sql, Op, [A])), S};
                     false -> {Node, S}
                 end;
-               (Node, S) -> {Node, S}
+               (Node, S) ->
+                    {Node, S}
             end, undefined, Ast),
     NewAst.
 
@@ -92,7 +99,7 @@ transform_fun(Fun) ->
         {module, erl_eval} ->
             {env, Env} = erlang:fun_info(Fun, env),
             case Env of
-                [{Bindings, {eval, _}, {value, _}, Ast}] ->
+                [?FUN_ENV_MATCH(Bindings, Ast)] ->
                     Exprs = erl_syntax:revert(?func(compile(Ast))),
                     {value, Fun2, _} = erl_eval:expr(Exprs, Bindings),
                     Fun2;
