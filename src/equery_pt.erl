@@ -7,7 +7,7 @@
 
 -include("ast_helpers.hrl").
 
--if(?OTP_RELEASE >= 24).
+-if(?OTP_RELEASE >= 25).
 -define(FUN_ENV_MATCH(FBs, FCs), {_FAnno, FBs, _FLf, _FEf, _FUVs, FCs}).
 -else.
 -define(FUN_ENV_MATCH(FBs, FCs), {FBs, _FLf, _FEf, FCs}).
