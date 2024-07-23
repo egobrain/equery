@@ -1,5 +1,5 @@
-[![Build Status](https://github.com/egobrain/equery/actions/workflows/ci.yml/badge.svg)](https://github.com/egobrain/equery/actions/workflows/ci.yml/badge.svg)
-[![Coverage Status](https://coveralls.io/repos/github/egobrain/equery/badge.svg?branch=master)](https://coveralls.io/github/egobrain/equery?branch=master)
+[![Build Status](https://github.com/egobrain/equery/actions/workflows/ci.yml/badge.svg)](https://github.com/egobrain/equery/actions/workflows/ci.yml)
+[![Coverage Status](https://coveralls.io/repos/github/egobrain/equery/badge.svg?branch=master)](https://coveralls.io/github/egobrain/equery)
 [![GitHub tag](https://img.shields.io/github/tag/egobrain/equery.svg)](https://github.com/egobrain/equery)
 [![Hex.pm](https://img.shields.io/hexpm/v/equery.svg)](https://hex.pm/packages/equery)
 
