@@ -26,7 +26,7 @@ schema() ->
         "\"__alias-0\".\"payload\" -> $1 "
         "from \"data\" as \"__alias-0\"">>, Sql),
     ?assertEqual([name], Args),
-    ?assertEqual(undefined, Type).
+    ?assertEqual(json, Type).
 
 '->>_test'() ->
     {Sql, Args, Type} = to_sql(
@@ -54,7 +54,7 @@ schema() ->
         "\"__alias-0\".\"payload\" #> $1 "
         "from \"data\" as \"__alias-0\"">>, Sql),
     ?assertEqual([[emails, 1]], Args),
-    ?assertEqual(undefined, Type).
+    ?assertEqual(json, Type).
 
 '#>>_test'() ->
     {Sql, Args, Type} = to_sql(

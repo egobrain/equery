@@ -16,7 +16,7 @@
 '->'(Field, Name) ->
     qast:exp([
         Field, qast:raw(" -> "), Name
-    ], #{}).
+    ], #{type => json}).
 
 '->>'(Field, Name) ->
     qast:exp([
@@ -26,7 +26,7 @@
 '#>'(Field, Path) when is_list(Path) ->
     qast:exp([
         Field, qast:raw(" #> "), Path
-    ], #{}).
+    ], #{type => json}).
 
 '#>>'(Field, Path) when is_list(Path) ->
     qast:exp([
