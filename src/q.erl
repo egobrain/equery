@@ -78,7 +78,7 @@ get(data, #query{data=Data}) -> Data.
 
 %% = Query builders ============================================================
 
--spec from(model() | query() | qast:ast_node()) -> query().
+-spec from(model() | query() | table() | qast:ast_node()) -> query().
 from(Info) when is_map(Info); is_atom(Info) ->
     Schema = get_schema(Info),
     {RealTable, Fields} = table_feilds(Schema),
@@ -305,10 +305,10 @@ group_by(Fun) -> fun(Q) -> group_by(Fun, Q) end.
 group_by(Fun, #query{data=Data}=Q) ->
     Q#query{group_by=call(Fun, [Data])}.
 
--spec on_conflict(conflict_target(), fun((data) -> conflict_action())) -> qfun().
+-spec on_conflict(conflict_target(), fun((data()) -> conflict_action())) -> qfun().
 on_conflict(ConflictTarget, Fun) -> fun(Q) -> on_conflict(ConflictTarget, Fun, Q) end.
 
--spec on_conflict(conflict_target(), fun((data) -> conflict_action()), Q) -> Q when Q :: query().
+-spec on_conflict(conflict_target(), fun((data()) -> conflict_action()), Q) -> Q when Q :: query().
 on_conflict(ConflictTarget, Fun, #query{on_conflict=OnConflict, data=Data}=Q) ->
     Schema = get(schema, Q),
     SchemaFields = maps:get(fields, Schema, #{}),
