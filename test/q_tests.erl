@@ -23,7 +23,6 @@
 -define(USER_FIELDS_WITHOUT(L), maps:without(L, ?USER_FIELDS)).
 -define(USER_FIELDS_LIST, ?MAPS_TO_LIST(?USER_FIELDS)).
 -define(USER_FIELDS_LIST(L), ?MAPS_TO_LIST(?USER_FIELDS(L))).
--define(USER_FIELDS_LIST_WITHOUT(L), ?MAPS_TO_LIST(maps:without(L, ?USER_FIELDS))).
 
 -define(COMMENT_SCHEMA, #{
         fields => #{
@@ -40,10 +39,6 @@
 -define(TREE_FIELDS, maps:get(fields, tree_m:schema())).
 -define(TREE_FIELDS_LIST, ?MAPS_TO_LIST(?TREE_FIELDS)).
 
--define(COMMENT_FIELDS, maps:get(fields, ?COMMENT_SCHEMA)).
--define(COMMENT_FIELDS_LIST, ?MAPS_TO_LIST(?COMMENT_FIELDS)).
--define(COMMENT_FIELDS_LIST_WITHOUT(L), ?MAPS_TO_LIST(maps:without(L, ?COMMENT_FIELDS))).
-
 schema() -> ?USER_SCHEMA.
 
 %% =============================================================================
@@ -52,7 +47,7 @@ schema() -> ?USER_SCHEMA.
 
 schema_test() ->
     ?assertEqual(?USER_SCHEMA, q:get(schema, q:from(?USER_SCHEMA))),
-    ?assertEqual(?USER_SCHEMA#{model => ?MODULE}, q:get(schema, q:from(?MODULE))).
+    ?assertEqual(maps:put(model, ?MODULE, ?USER_SCHEMA), q:get(schema, q:from(?MODULE))).
 
 data_test() ->
     ?assertEqual(
@@ -94,10 +89,117 @@ q_test() ->
            "on (\"__alias-0\".\"id\" = \"__alias-1\".\"author\") "
            "where ((\"__alias-0\".\"name\" = $1) and (\"__alias-1\".\"text\" = $2)) "
            "order by \"__alias-0\".\"name\" ASC,\"__alias-0\".\"id\" DESC "
-           "for update">>,
+           "for update of \"__alias-0\"">>,
          Sql),
     ?assertEqual([<<"test1">>, <<"test2">>], Args),
     ?assertEqual({model, undefined, ?USER_FIELDS_LIST}, Feilds).
+
+q_lock_with_several_tables_test() ->
+    {Sql, Args, Feilds} = to_sql(
+        qsql:select(q:pipe(q:from(?USER_SCHEMA), [
+            q:where(
+                fun([#{name := Name}]) ->
+                    pg_sql:'=:='(Name, <<"test1">>)
+                end),
+            q:using(?COMMENT_SCHEMA),
+            q:where(
+                fun([#{id := UserId}, #{author := AuthorId, text := Name}]) ->
+                    pg_sql:'andalso'(
+                        pg_sql:'=:='(UserId, AuthorId),
+                        pg_sql:'=:='(Name, <<"test2">>))
+                end),
+            q:order_by(
+                fun([#{name := Name, id := Id}|_]) ->
+                    [{Name, asc}, {Id, desc}]
+                end),
+            q:lock(for_update, fun(Tables) -> q:lookup_tables(?COMMENT_SCHEMA, Tables) end)
+        ]))),
+    ?assertEqual(
+         <<"select "
+           "\"__alias-0\".\"id\" as \"id\","
+           "\"__alias-0\".\"name\" as \"name\","
+           "\"__alias-0\".\"password\" as \"password\","
+           "\"__alias-0\".\"salt\" as \"salt\" "
+           "from \"users\" as \"__alias-0\","
+           "\"comments\" as \"__alias-1\" "
+           "where ((\"__alias-0\".\"name\" = $1) and ((\"__alias-0\".\"id\" = \"__alias-1\".\"author\") and (\"__alias-1\".\"text\" = $2))) "
+           "order by \"__alias-0\".\"name\" ASC,\"__alias-0\".\"id\" DESC "
+           "for update of \"__alias-1\"">>,
+         Sql),
+    ?assertEqual([<<"test1">>, <<"test2">>], Args),
+    ?assertEqual({model, undefined, ?USER_FIELDS_LIST}, Feilds).
+
+q_lock_lookup_error_test() ->
+    ?assertException(
+        error,
+        {unknown_table, #{table := <<"comments">>}},
+        qsql:select(q:pipe(q:from(?USER_SCHEMA), [
+            q:where(
+                fun([#{name := Name}]) ->
+                    pg_sql:'=:='(Name, <<"test1">>)
+                end),
+            q:lock(for_update, fun(Tables) -> q:lookup_tables(?COMMENT_SCHEMA, Tables) end)
+        ]))).
+
+q_lock_for_no_key_update_test() ->
+    {Sql, _Args, _Feilds} = to_sql(
+        qsql:select(q:pipe(q:from(?USER_SCHEMA), [
+            q:where(
+                fun([#{name := Name}]) ->
+                    pg_sql:'=:='(Name, <<"test1">>)
+                end),
+            q:lock(for_no_key_update)
+        ]))),
+    ?assertEqual(
+         <<"select "
+           "\"__alias-0\".\"id\" as \"id\","
+           "\"__alias-0\".\"name\" as \"name\","
+           "\"__alias-0\".\"password\" as \"password\","
+           "\"__alias-0\".\"salt\" as \"salt\" "
+           "from \"users\" as \"__alias-0\" "
+           "where (\"__alias-0\".\"name\" = $1) "
+           "for no key update of \"__alias-0\"">>,
+         Sql).
+
+q_lock_for_share_test() ->
+    {Sql, _Args, _Feilds} = to_sql(
+        qsql:select(q:pipe(q:from(?USER_SCHEMA), [
+            q:where(
+                fun([#{name := Name}]) ->
+                    pg_sql:'=:='(Name, <<"test1">>)
+                end),
+            q:lock(for_share)
+        ]))),
+    ?assertEqual(
+         <<"select "
+           "\"__alias-0\".\"id\" as \"id\","
+           "\"__alias-0\".\"name\" as \"name\","
+           "\"__alias-0\".\"password\" as \"password\","
+           "\"__alias-0\".\"salt\" as \"salt\" "
+           "from \"users\" as \"__alias-0\" "
+           "where (\"__alias-0\".\"name\" = $1) "
+           "for share of \"__alias-0\"">>,
+         Sql).
+
+q_lock_for_key_share_test() ->
+    {Sql, _Args, _Feilds} = to_sql(
+        qsql:select(q:pipe(q:from(?USER_SCHEMA), [
+            q:where(
+                fun([#{name := Name}]) ->
+                    pg_sql:'=:='(Name, <<"test1">>)
+                end),
+            q:lock(for_key_share)
+        ]))),
+    ?assertEqual(
+         <<"select "
+           "\"__alias-0\".\"id\" as \"id\","
+           "\"__alias-0\".\"name\" as \"name\","
+           "\"__alias-0\".\"password\" as \"password\","
+           "\"__alias-0\".\"salt\" as \"salt\" "
+           "from \"users\" as \"__alias-0\" "
+           "where (\"__alias-0\".\"name\" = $1) "
+           "for key share of \"__alias-0\"">>,
+         Sql).
 
 q_from_query_test() ->
     BaseQuery = q:pipe(q:from(?USER_SCHEMA), [
