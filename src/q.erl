@@ -352,7 +352,7 @@ for_update_of(V) -> fun(Q) -> for_update_of(Q, V) end.
 
 -spec for_update_of(Q, model()) -> Q when Q :: query().
 for_update_of(Q, T) ->
-    TName = equery_utils:wrap(get_table(T)),
+    TName = equery_utils:wrap(get_table_name(T)),
     Q#query{for_update_of=TName}.
 
 -spec data(fun((data()) -> data())) -> qfun().
@@ -390,8 +390,8 @@ call(Fun, Args) -> apply(equery_pt:transform_fun(Fun), Args).
 get_schema(Schema) when is_map(Schema) -> Schema;
 get_schema(Module) when is_atom(Module) -> (Module:schema())#{model => Module}.
 
-get_table(#{table := Table}) -> Table;
-get_table(Module) when is_atom(Module) -> #{table := Table} = Module:schema(), Table.
+get_table_name(#{table := Table}) -> Table;
+get_table_name(Module) when is_atom(Module) -> #{table := Table} = Module:schema(), Table.
 
 aliased_fields(TRef, Fields) ->
     maps:map(fun(F, Opts) ->
