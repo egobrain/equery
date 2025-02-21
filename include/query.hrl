@@ -13,5 +13,6 @@
             on_conflict = #{} :: #{q:conflict_target() => q:conflict_action()},
             limit :: non_neg_integer() | undefined,
             offset :: non_neg_integer() | undefined,
-            for_update = false :: boolean()
+            for_update = false :: boolean(),
+            for_update_of = undefined :: iolist()
          }).

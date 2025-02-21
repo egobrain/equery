@@ -23,7 +23,8 @@ select(#query{
             order_by=OrderBy,
             limit=Limit,
             offset=Offset,
-            for_update=ForUpdate
+            for_update=ForUpdate,
+            for_update_of=ForUpdateOf
          }) ->
     {Fields, Opts} = fields_and_opts(Schema, RFields),
     qast:exp([
@@ -38,7 +39,8 @@ select(#query{
         order_by_exp(OrderBy),
         limit_exp(Limit),
         offset_exp(Offset),
-        for_update(ForUpdate)
+        for_update(ForUpdate),
+        for_update_of(ForUpdateOf, Tables)
     ], Opts).
 
 -spec insert(q:query()) -> qast:ast_node().
@@ -290,3 +292,12 @@ for_update(true) ->
     qast:raw(" for update");
 for_update(false) ->
     qast:raw("").
+
+for_update_of(undefined, _Tables) ->
+    qast:raw("");
+for_update_of(Table, Tables) ->
+    [TRef] = [Ref || {real, T, Ref} <- Tables, T =:= Table],
+    qast:exp([
+        qast:raw(" for update of "),
+        qast:alias(TRef)
+    ]).
