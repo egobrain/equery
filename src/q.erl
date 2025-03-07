@@ -152,7 +152,7 @@ table_feilds(#{table := Table}=Schema) ->
     Fields = maps:map(
         fun(N, Opts) -> qast:field(TRef, N, Opts) end,
         SchemaFields),
-    RealTable = {real, equery_utils:wrap(Table), TRef},
+    RealTable = {real, Table, TRef},
     {RealTable, Fields}.
 
 
@@ -369,7 +369,7 @@ lock(RowLockLevel, Fun, #query{tables = AllTables} = Q) ->
 lookup_tables(Models, Tables) when is_list(Models) ->
     lists:flatmap(
         fun(M) ->
-            TableName = equery_utils:wrap(maps:get(table, get_schema(M))),
+            TableName = maps:get(table, get_schema(M)),
             RealTables = [T || {real, Table, _TRef} = T <- Tables, Table =:= TableName],
             case RealTables of
                 [] -> error({unknown_table, M});

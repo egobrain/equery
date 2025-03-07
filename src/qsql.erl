@@ -56,7 +56,7 @@ insert(#query{
     {Fields, Opts} = fields_and_opts(Schema, RFields),
     qast:exp([
         maybe_exp(WithExp),
-        qast:raw(["insert into ", Table, " as "]),
+        qast:raw(["insert into ", equery_utils:wrap(Table), " as "]),
         qast:alias(TRef),
         qast:raw(" ("),
         fields_exp([
@@ -80,7 +80,7 @@ insert(#query{
         {{K, qast:opts(V)}, V} || {K, V} <- ?MAPS_TO_LIST(Set)
     ]),
     qast:exp([
-        qast:raw(["insert into ", Table, " as "]),
+        qast:raw(["insert into ", equery_utils:wrap(Table), " as "]),
         qast:alias(TRef),
         qast:raw(" ("),
         fields_exp([
@@ -97,7 +97,7 @@ insert(#query{
 update(#query{schema=Schema, tables=[{real, Table, TRef}|Rest], select=RFields, where=Where, set=Set}) ->
     {Fields, Opts} = fields_and_opts(Schema, RFields),
     qast:exp([
-        qast:raw(["update ", Table, " as "]),
+        qast:raw(["update ", equery_utils:wrap(Table), " as "]),
         qast:alias(TRef),
         qast:raw(" set "),
         qast:join([
@@ -114,7 +114,7 @@ update(#query{schema=Schema, tables=[{real, Table, TRef}|Rest], select=RFields, 
 delete(#query{schema=Schema, tables=[{real, Table, TRef}|Rest], select=RFields, where=Where}) ->
     {Fields, Opts} = fields_and_opts(Schema, RFields),
     qast:exp([
-        qast:raw(["delete from ", Table, " as "]),
+        qast:raw(["delete from ", equery_utils:wrap(Table), " as "]),
         qast:alias(TRef),
         using_exp(Rest),
         where_exp(Where),
@@ -169,7 +169,7 @@ tables_exp_([_|_]=Tables) ->
 
 table_exp({real, Table, TRef}) ->
     qast:exp([
-        qast:raw([Table, " as "]),
+        qast:raw([equery_utils:wrap(Table), " as "]),
         qast:alias(TRef)
     ]);
 table_exp({alias, AliasExp, _FeildsExp}) -> AliasExp.
