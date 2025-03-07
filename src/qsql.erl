@@ -23,7 +23,7 @@ select(#query{
             order_by=OrderBy,
             limit=Limit,
             offset=Offset,
-            for_update=ForUpdate
+            lock=Lock
          }) ->
     {Fields, Opts} = fields_and_opts(Schema, RFields),
     qast:exp([
@@ -38,7 +38,7 @@ select(#query{
         order_by_exp(OrderBy),
         limit_exp(Limit),
         offset_exp(Offset),
-        for_update(ForUpdate)
+        lock(Lock)
     ], Opts).
 
 -spec insert(q:query()) -> qast:ast_node().
@@ -286,7 +286,18 @@ conflict_action_exp(Set) when is_map(Set) ->
         ], qast:raw(","))
     ]).
 
-for_update(true) ->
-    qast:raw(" for update");
-for_update(false) ->
-    qast:raw("").
+lock(undefined) ->
+    qast:raw("");
+lock({RowLockLevel, Tables}) ->
+    Aliases = lists:map(fun({real, _Table, TRef}) -> qast:alias(TRef) end, Tables),
+    qast:exp([
+        qast:raw(" "),
+        case RowLockLevel of
+            for_update -> qast:raw("for update");
+            for_no_key_update -> qast:raw("for no key update");
+            for_share -> qast:raw("for share");
+            for_key_share -> qast:raw("for key share")
+        end,
+        qast:raw(" of "),
+        qast:join(Aliases, qast:raw(","))
+    ]).

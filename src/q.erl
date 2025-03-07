@@ -6,7 +6,8 @@
 -export([
          pipe/2,
 
-         get/2
+         get/2,
+         lookup_tables/2
         ]).
 
 -export([
@@ -24,6 +25,8 @@
          order_by/1, order_by/2,
          limit/1, limit/2,
          offset/1, offset/2,
+
+         lock/1, lock/2, lock/3,
          for_update/0, for_update/1,
 
          distinct/0, distinct/1,
@@ -44,15 +47,20 @@
 -type order() :: [{qast:ast_node(), asc | desc}].
 -type distinct() :: all | [atom()].
 -type join_type() :: inner | left | right | full | {left, outer} | {right, outer} | {full, outer}.
+-type row_lock_level() :: for_update | for_no_key_update | for_share | for_key_share.
 -type qfun() :: fun((query()) -> query()).
 -type conflict_target() :: any | [atom()].
 -type conflict_action() :: nothing | #{atom() => qast:ast_node()}.
+
+%% internal
+-type real_table() :: {real, iolist(), reference()}.
 
 -export_type([query/0]).
 
 -export_type([
          model/0,
          table/0,
+         real_table/0,
          schema/0,
          data/0,
          select/0,
@@ -60,6 +68,7 @@
          order/0,
          distinct/0,
          join_type/0,
+         row_lock_level/0,
          qfun/0,
          conflict_target/0,
          conflict_action/0
@@ -339,12 +348,44 @@ offset(Value) -> fun(Q) -> offset(Value, Q) end.
 offset(Value, Q) ->
     Q#query{offset=Value}.
 
+-spec lock(row_lock_level()) -> qfun().
+lock(RowLockLevel) ->
+    lock(RowLockLevel, fun(RealTables) -> RealTables end).
+
+-spec lock(row_lock_level(), fun(([RealTable]) -> [RealTable])) -> qfun() when
+    RealTable :: real_table().
+lock(RowLockLevel, Fun) ->
+    fun(Q) -> lock(RowLockLevel, Fun, Q) end.
+
+-spec lock(row_lock_level(), fun(([RealTable]) -> [RealTable]), query()) -> query() when
+    RealTable :: real_table().
+lock(RowLockLevel, Fun, #query{tables = AllTables} = Q) ->
+    RealTables = [T || {real, _Table, _TRef} = T <- AllTables],
+    Q#query{lock = {RowLockLevel, Fun(RealTables)}}.
+
+-spec lookup_tables(model() | [model()], [RealTable]) -> [RealTable] when
+    RealTable :: real_table().
+%% @THROWS {unknown_table, model()}
+lookup_tables(Models, Tables) when is_list(Models) ->
+    lists:flatmap(
+        fun(M) ->
+            TableName = equery_utils:wrap(maps:get(table, get_schema(M))),
+            RealTables = [T || {real, Table, _TRef} = T <- Tables, Table =:= TableName],
+            case RealTables of
+                [] -> error({unknown_table, M});
+                _ -> RealTables
+            end
+        end,
+        Models);
+lookup_tables(Model, Tables) ->
+    lookup_tables([Model], Tables).
+
 -spec for_update() -> qfun().
 for_update() -> fun(Q) -> for_update(Q) end.
 
 -spec for_update(Q) -> Q when Q :: query().
 for_update(Q) ->
-    Q#query{for_update=true}.
+    lock(for_update, fun(T) -> T end, Q).
 
 -spec data(fun((data()) -> data())) -> qfun().
 data(Fun) -> fun(Q) -> data(Fun, Q) end.
