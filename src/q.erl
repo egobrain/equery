@@ -144,6 +144,16 @@ using(Info, #query{tables=[_|_]=Tables, data=Data}=Query) when is_map(Info); is_
     Query#query{
         tables = Tables ++ [RealTable],
         data = Data ++ [Fields]
+     };
+using(Ast, #query{tables=[_|_]=Tables, data=Data}=Query) ->
+    #{type := {model, _Model, FieldsList}} = qast:opts(Ast),
+    TRef = make_ref(),
+    Fields = maps:from_list(FieldsList),
+    FieldsExp = aliased_fields(TRef, Fields),
+    TableAst = as(braced(Ast), qast:alias(TRef)),
+    Query#query{
+        tables = Tables ++ [{alias, TableAst, FieldsExp}],
+        data = Data ++ [FieldsExp]
     }.
 
 table_feilds(#{table := Table}=Schema) ->

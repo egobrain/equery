@@ -525,6 +525,34 @@ q_delete_using_test() ->
     ?assertEqual([3], Args),
     ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST}, ReturningFields).
 
+q_delete_using_ast_test() ->
+    {Sql, Args, ReturningFields} = to_sql(
+        qsql:delete(q:pipe(q:from(?MODULE), [
+            q:using(qsql:select(q:pipe(q:from(?MODULE), [
+                q:where(fun([#{name := Name}]) -> Name =:= <<"login">> end),
+                q:select(fun([#{id := Id}]) -> #{id => Id} end)
+            ]))),
+            q:where(fun([#{id := Id1}, #{id := Id2}]) ->
+                Id1 =:= Id2
+            end)
+        ]))),
+    ?assertEqual(
+         <<"delete from \"users\" as \"__alias-0\" "
+           "using (select "
+           "\"__alias-1\".\"id\" as \"id\" "
+           "from \"users\" as \"__alias-1\" "
+           "where (\"__alias-1\".\"name\" = $1)"
+           ") as \"__alias-2\" "
+           "where (\"__alias-0\".\"id\" = \"__alias-2\".\"id\") "
+           "returning "
+           "\"__alias-0\".\"id\" as \"id\","
+           "\"__alias-0\".\"name\" as \"name\","
+           "\"__alias-0\".\"password\" as \"password\","
+           "\"__alias-0\".\"salt\" as \"salt\"">>,
+        Sql),
+    ?assertEqual([<<"login">>], Args),
+    ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST}, ReturningFields).
+
 q_delete_with_test() ->
     SelectQ = q:pipe(q:from(?COMMENT_SCHEMA), [
         q:where(fun([#{text := Text}]) -> Text =:= <<"some">> end),
