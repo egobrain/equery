@@ -79,8 +79,8 @@
 
 %% @TODO wrap values in $value before validation and add $value match
 -spec 'andalso'(V, V) -> V when V :: boolean() | qast:ast_node().
-'andalso'(true, B) -> B;
-'andalso'(A, true) -> A;
+'andalso'(true, B) -> maybe_inherit_type(B, boolean);
+'andalso'(A, true) -> maybe_inherit_type(A, boolean);
 
 'andalso'(false, _) -> false;
 'andalso'(_, false) -> false;
@@ -91,34 +91,42 @@
 -spec 'orelse'(V, V) -> V when V :: boolean() | qast:ast_node().
 'orelse'(true, _) -> true;
 'orelse'(_, true) -> true;
-'orelse'(false, B) -> B;
-'orelse'(A, false) -> A;
-'orelse'(A, B) ->
+'orelse'(false, B) -> maybe_inherit_type(B, boolean);
+'orelse'(A, false) -> maybe_inherit_type(A, boolean);
+'orelse'(A0, B0) ->
+    A = maybe_inherit_type(A0, boolean),
+    B = maybe_inherit_type(B0, boolean),
     qast:exp([qast:raw("("), A, qast:raw(" or "), B, qast:raw(")")], #{type => boolean}).
 
 -spec 'not'(V) -> V when V :: boolean() | qast:ast_node().
 'not'(A) when is_boolean(A) -> not A;
-'not'(A) ->
+'not'(A0) ->
+    A = maybe_inherit_type(A0, boolean),
     qast:exp([qast:raw("not "), A], #{type => boolean}).
 
 -spec '=:='(value(), value()) -> qast:ast_node().
-'=:='(A, B) ->
+'=:='(A0, B0) ->
+    {A, B} = same_type(A0, B0),
     qast:exp([qast:raw("("), A, qast:raw(" = "), B, qast:raw(")")], #{type => boolean}).
 
 -spec '=/='(value(), value()) -> qast:ast_node().
 '=/='(A, B) -> 'not'('=:='(A,B)).
 
 -spec '>'(value(), value()) -> qast:ast_node().
-'>'(A, B) ->
+'>'(A0, B0) ->
+    {A, B} = same_type(A0, B0),
     qast:exp([qast:raw("("), A, qast:raw(" > "), B, qast:raw(")")], #{type => boolean}).
 -spec '>='(value(), value()) -> qast:ast_node().
-'>='(A, B) ->
+'>='(A0, B0) ->
+    {A, B} = same_type(A0, B0),
     qast:exp([qast:raw("("), A, qast:raw(" >= "), B, qast:raw(")")], #{type => boolean}).
 -spec '<'(value(), value()) -> qast:ast_node().
-'<'(A, B) ->
+'<'(A0, B0) ->
+    {A, B} = same_type(A0, B0),
     qast:exp([qast:raw("("), A, qast:raw(" < "), B, qast:raw(")")], #{type => boolean}).
 -spec '=<'(value(), value()) -> qast:ast_node().
-'=<'(A, B) ->
+'=<'(A0, B0) ->
+    {A, B} = same_type(A0, B0),
     qast:exp([qast:raw("("), A, qast:raw(" <= "), B, qast:raw(")")], #{type => boolean}).
 
 -spec 'is'(value(), value()) -> qast:ast_node().
@@ -131,16 +139,20 @@ is_null(A) ->
 
 %% @TODO type opts
 -spec '+'(value(), value()) -> qast:ast_node().
-'+'(A, B) ->
+'+'(A0, B0) ->
+    {A, B} = same_type(A0, B0),
     qast:exp([qast:raw("("), A, qast:raw(" + "), B, qast:raw(")")]).
 -spec '-'(value(), value()) -> qast:ast_node().
-'-'(A, B) ->
+'-'(A0, B0) ->
+    {A, B} = same_type(A0, B0),
     qast:exp([qast:raw("("), A, qast:raw(" - "), B, qast:raw(")")]).
 -spec '*'(value(), value()) -> qast:ast_node().
-'*'(A, B) ->
+'*'(A0, B0) ->
+    {A, B} = same_type(A0, B0),
     qast:exp([qast:raw("("), A, qast:raw(" * "), B, qast:raw(")")]).
 -spec '/'(value(), value()) -> qast:ast_node().
-'/'(A, B) ->
+'/'(A0, B0) ->
+    {A, B} = same_type(A0, B0),
     qast:exp([qast:raw("("), A, qast:raw(" / "), B, qast:raw(")")]).
 
 -spec 'abs'(value()) -> qast:ast_node().
@@ -196,11 +208,13 @@ array_agg(Ast) ->
 %% = Math ======================================================================
 
 -spec 'min'(value(), value()) -> qast:ast_node().
-min(A, B) ->
+min(A0, B0) ->
+    {A, B} = same_type(A0, B0),
     qast:exp([qast:raw("LEAST("), A, qast:raw(","), B, qast:raw(")")], qast:opts(A)).
 
 -spec 'max'(value(), value()) -> qast:ast_node().
-max(A, B) ->
+max(A0, B0) ->
+    {A, B} = same_type(A0, B0),
     qast:exp([qast:raw("GREATEST("), A, qast:raw(","), B, qast:raw(")")], qast:opts(A)).
 
 %% = Additional operations =====================================================
@@ -226,11 +240,14 @@ coalesce([H|_]=List) ->
         qast:raw(")")
     ], maps:with([type], qast:opts(H))).
 
-in(A, #query{}=Q) ->
-    qast:exp([A, qast:raw(" in ("), qsql:select(Q), qast:raw(")")], #{type => boolean});
+in(A0, #query{}=Q) ->
+    Select = qsql:select(Q),
+    A = array_item_type(A0, Select),
+    qast:exp([A, qast:raw(" in ("), Select, qast:raw(")")], #{type => boolean});
 in(A, [Item]) ->
     '=:='(A, Item);
-in(A, B) ->
+in(A0, B0) ->
+    {A, B} = array_in_type(A0, B0),
     qast:exp([A, qast:raw(" = ANY("), B, qast:raw(")")], #{type => boolean}).
 
 exists(#query{}=Q) ->
@@ -261,6 +278,53 @@ as(Ast, Type) ->
 set_type(Ast, Type) ->
     Opts = qast:opts(Ast),
     qast:set_opts(Ast, Opts#{type => Type}).
+
+same_type(A, B) ->
+    case {qast:is_ast(A), qast:is_ast(B)} of
+        {true, false} -> {A, inherit_type(B, A)};
+        {false, true} -> {inherit_type(A, B), B};
+        _ -> {A, B}
+    end.
+
+array_item_type(A, ArrayAst) ->
+    case qast:is_ast(A) of
+        true -> A;
+        false ->
+            case qast:opts(ArrayAst) of
+                #{type := {array, T}} -> qast:value(A, #{type => T});
+                _ -> A
+            end
+    end.
+
+array_in_type(Item, Array) ->
+    case {qast:is_ast(Item), qast:is_ast(Array)} of
+        {true, false} ->
+            case qast:opts(Item) of
+                #{type := T} ->
+                    {Item, qast:value(Array, #{type => {array, T}})};
+                _ ->
+                    {Item, Array}
+            end;
+        {false, true} ->
+            case qast:opts(Array) of
+                #{type := {array, T}} ->
+                    {qast:value(Item, #{type => T}), Array};
+                _ ->
+                    {Item, Array}
+            end;
+        _ ->
+            {Item, Array}
+    end.
+
+maybe_inherit_type(A, Type) ->
+    case qast:is_ast(A) of
+        true -> A;
+        false -> qast:value(A, #{type => Type})
+    end.
+
+inherit_type(To, From) ->
+    TypeOpts = maps:with([type], qast:opts(From)),
+    qast:value(To, TypeOpts).
 
 type_str(Atom) when is_atom(Atom) ->
     atom_to_binary(Atom, latin1);

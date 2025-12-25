@@ -93,21 +93,23 @@ join([H|T], Sep) ->
 
 -record(state, {
             aliases=#{}, aliases_cnt=0,
-            args=[], args_cnt=0
+            args=[], args_cnt=0,
+            types=[]
        }).
 
 -spec to_sql(ast_node()) -> {Sql :: binary(), Args :: [any()]}.
 to_sql(Ast) ->
-    {Sql, #state{args=Args}} = traverse(
-        fun({'$value', _Opts, V}, #state{args=Vs, args_cnt=Cnt}=St) ->
+    {Sql, #state{args=Args, types=Types}} = traverse(
+        fun({'$value', _Opts, V}, #state{args=Vs, types=Ts, args_cnt=Cnt}=St) ->
                NewCnt = Cnt+1,
-               {index(NewCnt), St#state{args=[V|Vs], args_cnt=NewCnt}};
+               T = maps:get(type, _Opts, undefined),
+               {index(NewCnt), St#state{args=[V|Vs], types=[T|Ts], args_cnt=NewCnt}};
            ({'$alias', _Opts, TRef}, St) ->
                get_alias(TRef, St);
            ({'$raw', _Opts, V}, St) ->
                {V, St}
         end, #state{}, Ast),
-    {iolist_to_binary(Sql), lists:reverse(Args)}.
+    {iolist_to_binary(Sql), lists:reverse(Args), lists:reverse(Types)}.
 
 %% =============================================================================
 %% Internal
