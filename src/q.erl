@@ -22,6 +22,7 @@
          data/1, data/2,
          group_by/1, group_by/2,
          on_conflict/2, on_conflict/3,
+         on_conflict_where/3, on_conflict_where/4,
          order_by/1, order_by/2,
          limit/1, limit/2,
          offset/1, offset/2,
@@ -49,11 +50,13 @@
 -type join_type() :: inner | left | right | full | {left, outer} | {right, outer} | {full, outer}.
 -type row_lock_level() :: for_update | for_no_key_update | for_share | for_key_share.
 -type qfun() :: fun((query()) -> query()).
--type conflict_target() :: any | [atom()].
+-type conflict_columns() :: [atom()].
+-type conflict_target() :: any | conflict_columns().
 -type conflict_action() :: nothing | #{atom() => qast:ast_node()}.
 
 %% internal
 -type real_table() :: {real, iolist(), reference()}.
+-type stored_conflict_target() :: conflict_target() | {conflict_columns(), qast:ast_node()}.
 
 -export_type([query/0]).
 
@@ -70,7 +73,9 @@
          join_type/0,
          row_lock_level/0,
          qfun/0,
+         conflict_columns/0,
          conflict_target/0,
+         stored_conflict_target/0,
          conflict_action/0
         ]).
 
@@ -336,6 +341,23 @@ on_conflict(ConflictTarget, Fun, #query{on_conflict=OnConflict, data=Data}=Q) ->
         qast:exp([Table, qast:raw([".", equery_utils:field_name(N)])], Opts)
     end, SchemaFields),
     Q#query{on_conflict=maps:put(ConflictTarget, call(Fun, [Data ++ [Fields]]), OnConflict)}.
+
+-spec on_conflict_where(conflict_columns(), fun((data()) -> qast:ast_node()),
+                        fun((data()) -> conflict_action())) -> qfun().
+on_conflict_where(Columns, Filter, Fun) ->
+    fun(Q) -> on_conflict_where(Columns, Filter, Fun, Q) end.
+
+-spec on_conflict_where(conflict_columns(), fun((data()) -> qast:ast_node()),
+                        fun((data()) -> conflict_action()), Q) -> Q when Q :: query().
+on_conflict_where(Columns, Filter, Fun, #query{on_conflict=OnConflict, data=Data}=Q) ->
+    Schema = get(schema, Q),
+    SchemaFields = maps:get(fields, Schema, #{}),
+    Table = qast:raw("EXCLUDED"),
+    Fields = maps:map(fun(N, Opts) ->
+        qast:exp([Table, qast:raw([".", equery_utils:field_name(N)])], Opts)
+    end, SchemaFields),
+    Target = {Columns, call(Filter, [Data])},
+    Q#query{on_conflict=maps:put(Target, call(Fun, [Data ++ [Fields]]), OnConflict)}.
 
 -spec order_by(fun((data()) -> order())) -> qfun().
 order_by(Fun) -> fun(Q) -> order_by(Fun, Q) end.

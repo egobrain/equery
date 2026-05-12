@@ -353,6 +353,32 @@ q_upsert_test() ->
     ?assertEqual(1, lists:nth(5, Args)),
     ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST}, ReturningFields).
 
+q_upsert_target_where_test() ->
+    {Sql, Args, ReturningFields} = to_sql(
+        qsql:insert(q:pipe(q:from(?MODULE), [
+            q:set(fun(_) -> ?USER_FIELDS end),
+            q:on_conflict_where(
+                [id],
+                fun([#{name := Name}]) -> Name =:= <<"alice">> end,
+                fun([_, Excluded]) -> Excluded end)
+        ]))),
+    ?assertEqual(
+        <<"insert into \"users\" as \"__alias-0\" (\"id\",\"name\",\"password\",\"salt\") "
+          "values ($1,$2,$3,$4) "
+          "on conflict (\"id\") where (\"__alias-0\".\"name\" = $5) do update set "
+          "\"id\" = EXCLUDED.\"id\","
+          "\"name\" = EXCLUDED.\"name\","
+          "\"password\" = EXCLUDED.\"password\","
+          "\"salt\" = EXCLUDED.\"salt\" "
+          "returning "
+          "\"__alias-0\".\"id\" as \"id\","
+          "\"__alias-0\".\"name\" as \"name\","
+          "\"__alias-0\".\"password\" as \"password\","
+          "\"__alias-0\".\"salt\" as \"salt\"">>,
+        Sql),
+    ?assertEqual(<<"alice">>, lists:nth(5, Args)),
+    ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST}, ReturningFields).
+
 q_with_test() ->
     {Sql, Args, ReturningFields} = to_sql(
         qsql:select(q:pipe(q:from(?MODULE), [

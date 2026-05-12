@@ -283,7 +283,17 @@ on_conflict_exp(Conflicts) ->
     end, qast:raw(""), ?MAPS_TO_LIST(Conflicts)).
 
 conflict_target_exp(any) -> qast:raw(" ");
+conflict_target_exp({Columns, WhereExp}) when is_list(Columns) ->
+    qast:exp([
+        columns_exp(Columns),
+        qast:raw("where "),
+        WhereExp,
+        qast:raw(" ")
+    ]);
 conflict_target_exp(Columns) when is_list(Columns) ->
+    columns_exp(Columns).
+
+columns_exp(Columns) ->
     qast:exp([
         qast:raw(" ("),
         qast:join([

@@ -44,7 +44,8 @@ search_and_compile({call, _, {remote, _, {atom, _, q}, {atom, _, F}}, Args}=Node
       F =:= select;
       F =:= where;
       F =:= recursive;
-      F =:= on_conflict
+      F =:= on_conflict;
+      F =:= on_conflict_where
        ->
     {ArgsNode, St2} = lists:mapfoldl(
         fun({'fun', L, {clauses, Clauses}}, S) ->
