@@ -27,7 +27,7 @@
          limit/1, limit/2,
          offset/1, offset/2,
 
-         lock/1, lock/2, lock/3,
+         lock/1, lock/2, lock/3, lock/4,
          for_update/0, for_update/1,
 
          distinct/0, distinct/1,
@@ -49,6 +49,7 @@
 -type distinct() :: all | [atom()].
 -type join_type() :: inner | left | right | full | {left, outer} | {right, outer} | {full, outer}.
 -type row_lock_level() :: for_update | for_no_key_update | for_share | for_key_share.
+-type wait_policy() :: wait | nowait | skip_locked.
 -type qfun() :: fun((query()) -> query()).
 -type conflict_columns() :: [atom()].
 -type conflict_target() :: any | conflict_columns().
@@ -72,6 +73,7 @@
          distinct/0,
          join_type/0,
          row_lock_level/0,
+         wait_policy/0,
          qfun/0,
          conflict_columns/0,
          conflict_target/0,
@@ -382,18 +384,22 @@ offset(Value, Q) ->
 
 -spec lock(row_lock_level()) -> qfun().
 lock(RowLockLevel) ->
-    lock(RowLockLevel, fun(RealTables) -> RealTables end).
+    lock(RowLockLevel, wait).
 
--spec lock(row_lock_level(), fun(([RealTable]) -> [RealTable])) -> qfun() when
-    RealTable :: real_table().
-lock(RowLockLevel, Fun) ->
-    fun(Q) -> lock(RowLockLevel, Fun, Q) end.
+-spec lock(row_lock_level(), wait_policy()) -> qfun().
+lock(RowLockLevel, WaitPolicy) ->
+    lock(RowLockLevel, WaitPolicy, fun(RealTables) -> RealTables end).
 
--spec lock(row_lock_level(), fun(([RealTable]) -> [RealTable]), query()) -> query() when
+-spec lock(row_lock_level(), wait_policy(), fun(([RealTable]) -> [RealTable])) -> qfun() when
     RealTable :: real_table().
-lock(RowLockLevel, Fun, #query{tables = AllTables} = Q) ->
+lock(RowLockLevel, WaitPolicy, Fun) ->
+    fun(Q) -> lock(RowLockLevel, WaitPolicy, Fun, Q) end.
+
+-spec lock(row_lock_level(), wait_policy(), fun(([RealTable]) -> [RealTable]), query()) -> query() when
+    RealTable :: real_table().
+lock(RowLockLevel, WaitPolicy, Fun, #query{tables = AllTables} = Q) ->
     RealTables = [T || {real, _Table, _TRef} = T <- AllTables],
-    Q#query{lock = {RowLockLevel, Fun(RealTables)}}.
+    Q#query{lock = {RowLockLevel, Fun(RealTables), WaitPolicy}}.
 
 -spec lookup_tables(model() | [model()], [RealTable]) -> [RealTable] when
     RealTable :: real_table().
@@ -417,7 +423,7 @@ for_update() -> fun(Q) -> for_update(Q) end.
 
 -spec for_update(Q) -> Q when Q :: query().
 for_update(Q) ->
-    lock(for_update, fun(T) -> T end, Q).
+    lock(for_update, wait, fun(T) -> T end, Q).
 
 -spec data(fun((data()) -> data())) -> qfun().
 data(Fun) -> fun(Q) -> data(Fun, Q) end.
