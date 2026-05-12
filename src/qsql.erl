@@ -303,6 +303,12 @@ columns_exp(Columns) ->
     ]).
 
 conflict_action_exp(nothing) -> qast:raw("nothing");
+conflict_action_exp({Set, WhereExp}) when is_map(Set) ->
+    qast:exp([
+        conflict_action_exp(Set),
+        qast:raw(" where "),
+        WhereExp
+    ]);
 conflict_action_exp(Set) when is_map(Set) ->
     qast:exp([
         qast:raw("update set "),

@@ -53,7 +53,8 @@
 -type qfun() :: fun((query()) -> query()).
 -type conflict_columns() :: [atom()].
 -type conflict_target() :: any | conflict_columns().
--type conflict_action() :: nothing | #{atom() => qast:ast_node()}.
+-type conflict_update() :: #{atom() => qast:ast_node()}.
+-type conflict_action() :: nothing | conflict_update() | {conflict_update(), qast:ast_node()}.
 
 %% internal
 -type real_table() :: {real, iolist(), reference()}.
@@ -78,6 +79,7 @@
          conflict_columns/0,
          conflict_target/0,
          stored_conflict_target/0,
+         conflict_update/0,
          conflict_action/0
         ]).
 
