@@ -13,5 +13,5 @@
             on_conflict = #{} :: #{q:conflict_target() => q:conflict_action()},
             limit :: non_neg_integer() | undefined,
             offset :: non_neg_integer() | undefined,
-            lock :: {q:row_lock_level(), [q:real_table()]} | undefined
+            lock :: {q:row_lock_level(), [q:real_table()], q:wait_policy()} | undefined
          }).

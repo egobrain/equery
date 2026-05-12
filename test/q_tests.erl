@@ -112,7 +112,7 @@ q_lock_with_several_tables_test() ->
                 fun([#{name := Name, id := Id}|_]) ->
                     [{Name, asc}, {Id, desc}]
                 end),
-            q:lock(for_update, fun(Tables) -> q:lookup_tables(?COMMENT_SCHEMA, Tables) end)
+            q:lock(for_update, wait, fun(Tables) -> q:lookup_tables(?COMMENT_SCHEMA, Tables) end)
         ]))),
     ?assertEqual(
          <<"select "
@@ -138,7 +138,7 @@ q_lock_lookup_error_test() ->
                 fun([#{name := Name}]) ->
                     pg_sql:'=:='(Name, <<"test1">>)
                 end),
-            q:lock(for_update, fun(Tables) -> q:lookup_tables(?COMMENT_SCHEMA, Tables) end)
+            q:lock(for_update, wait, fun(Tables) -> q:lookup_tables(?COMMENT_SCHEMA, Tables) end)
         ]))).
 
 q_lock_for_no_key_update_test() ->
@@ -199,6 +199,72 @@ q_lock_for_key_share_test() ->
            "from \"users\" as \"__alias-0\" "
            "where (\"__alias-0\".\"name\" = $1) "
            "for key share of \"__alias-0\"">>,
+         Sql).
+
+q_lock_skip_locked_test() ->
+    {Sql, _Args, _Feilds} = to_sql(
+        qsql:select(q:pipe(q:from(?USER_SCHEMA), [
+            q:where(
+                fun([#{name := Name}]) ->
+                    pg_sql:'=:='(Name, <<"test1">>)
+                end),
+            q:lock(for_update, skip_locked)
+        ]))),
+    ?assertEqual(
+         <<"select "
+           "\"__alias-0\".\"id\" as \"id\","
+           "\"__alias-0\".\"name\" as \"name\","
+           "\"__alias-0\".\"password\" as \"password\","
+           "\"__alias-0\".\"salt\" as \"salt\" "
+           "from \"users\" as \"__alias-0\" "
+           "where (\"__alias-0\".\"name\" = $1) "
+           "for update of \"__alias-0\" skip locked">>,
+         Sql).
+
+q_lock_nowait_test() ->
+    {Sql, _Args, _Feilds} = to_sql(
+        qsql:select(q:pipe(q:from(?USER_SCHEMA), [
+            q:where(
+                fun([#{name := Name}]) ->
+                    pg_sql:'=:='(Name, <<"test1">>)
+                end),
+            q:lock(for_update, nowait)
+        ]))),
+    ?assertEqual(
+         <<"select "
+           "\"__alias-0\".\"id\" as \"id\","
+           "\"__alias-0\".\"name\" as \"name\","
+           "\"__alias-0\".\"password\" as \"password\","
+           "\"__alias-0\".\"salt\" as \"salt\" "
+           "from \"users\" as \"__alias-0\" "
+           "where (\"__alias-0\".\"name\" = $1) "
+           "for update of \"__alias-0\" nowait">>,
+         Sql).
+
+q_lock_skip_locked_with_table_selection_test() ->
+    {Sql, _Args, _Feilds} = to_sql(
+        qsql:select(q:pipe(q:from(?USER_SCHEMA), [
+            q:where(
+                fun([#{name := Name}]) ->
+                    pg_sql:'=:='(Name, <<"test1">>)
+                end),
+            q:using(?COMMENT_SCHEMA),
+            q:where(
+                fun([#{id := UserId}, #{author := AuthorId}]) ->
+                    pg_sql:'=:='(UserId, AuthorId)
+                end),
+            q:lock(for_update, skip_locked, fun(Tables) -> q:lookup_tables(?COMMENT_SCHEMA, Tables) end)
+        ]))),
+    ?assertEqual(
+         <<"select "
+           "\"__alias-0\".\"id\" as \"id\","
+           "\"__alias-0\".\"name\" as \"name\","
+           "\"__alias-0\".\"password\" as \"password\","
+           "\"__alias-0\".\"salt\" as \"salt\" "
+           "from \"users\" as \"__alias-0\","
+           "\"comments\" as \"__alias-1\" "
+           "where ((\"__alias-0\".\"name\" = $1) and (\"__alias-0\".\"id\" = \"__alias-1\".\"author\")) "
+           "for update of \"__alias-1\" skip locked">>,
          Sql).
 
 q_from_query_test() ->

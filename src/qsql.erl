@@ -288,7 +288,7 @@ conflict_action_exp(Set) when is_map(Set) ->
 
 lock(undefined) ->
     qast:raw("");
-lock({RowLockLevel, Tables}) ->
+lock({RowLockLevel, Tables, WaitPolicy}) ->
     Aliases = lists:map(fun({real, _Table, TRef}) -> qast:alias(TRef) end, Tables),
     qast:exp([
         qast:raw(" "),
@@ -299,5 +299,10 @@ lock({RowLockLevel, Tables}) ->
             for_key_share -> qast:raw("for key share")
         end,
         qast:raw(" of "),
-        qast:join(Aliases, qast:raw(","))
+        qast:join(Aliases, qast:raw(",")),
+        case WaitPolicy of
+            wait -> qast:raw("");
+            nowait -> qast:raw(" nowait");
+            skip_locked -> qast:raw(" skip locked")
+        end
     ]).
