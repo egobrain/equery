@@ -21,6 +21,7 @@
          set/1, set/2,
          data/1, data/2,
          group_by/1, group_by/2,
+         having/1, having/2,
          on_conflict/2, on_conflict/3,
          on_conflict_where/3, on_conflict_where/4,
          order_by/1, order_by/2,
@@ -332,6 +333,19 @@ group_by(Fun) -> fun(Q) -> group_by(Fun, Q) end.
 -spec group_by(fun((data()) -> qast:ast_node()), Q) -> Q when Q :: query().
 group_by(Fun, #query{data=Data}=Q) ->
     Q#query{group_by=call(Fun, [Data])}.
+
+-spec having(fun((data()) -> qast:ast_node())) -> qfun().
+having(Fun) -> fun(Q) -> having(Fun, Q) end.
+
+-spec having(fun((data()) -> qast:ast_node()), Q) -> Q when Q :: query().
+having(Fun, #query{data=Data, having=OldHaving}=Q) ->
+    Having = call(Fun, [Data]),
+    NewHaving =
+        case OldHaving of
+            undefined -> Having;
+            _ -> pg_sql:'andalso'(OldHaving, Having)
+        end,
+    Q#query{having = NewHaving}.
 
 -spec on_conflict(conflict_target(), fun((data()) -> conflict_action())) -> qfun().
 on_conflict(ConflictTarget, Fun) -> fun(Q) -> on_conflict(ConflictTarget, Fun, Q) end.

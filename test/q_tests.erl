@@ -784,6 +784,58 @@ q_group_by_test() ->
     ?assertEqual([<<"test1">>, <<"test2">>], Args),
     ?assertEqual({model, ?MODULE, [{cnt, #{type => integer}}]}, Feilds).
 
+q_having_test() ->
+    {Sql, Args, Feilds} = to_sql(
+        qsql:select(q:pipe(q:from(?MODULE), [
+            q:join(?COMMENT_SCHEMA,
+                fun([#{id := UserId}, #{author := AuthorId}]) ->
+                    UserId =:= AuthorId
+                end),
+            q:group_by(
+                fun([_, #{author := AuthorId}]) ->
+                    [AuthorId]
+                end),
+            q:having(
+                fun([#{id := Id}|_]) ->
+                    pg_sql:count(Id) > 1
+                end),
+            q:select(
+                fun([#{id := Id}|_]) ->
+                    #{cnt => pg_sql:count(Id)}
+                end)
+        ]))),
+    ?assertEqual(
+         <<"select "
+           "count(\"__alias-0\".\"id\") as \"cnt\" "
+           "from \"users\" as \"__alias-0\" "
+           "inner join \"comments\" as \"__alias-1\" "
+           "on (\"__alias-0\".\"id\" = \"__alias-1\".\"author\") "
+           "group by \"__alias-1\".\"author\" "
+           "having (count(\"__alias-0\".\"id\") > $1)">>,
+         Sql),
+    ?assertEqual([1], Args),
+    ?assertEqual({model, ?MODULE, [{cnt, #{type => integer}}]}, Feilds).
+
+q_having_compose_test() ->
+    {Sql, Args, _Feilds} = to_sql(
+        qsql:select(q:pipe(q:from(?MODULE), [
+            q:group_by(fun([#{name := Name}]) -> [Name] end),
+            q:having(fun([#{id := Id}]) -> pg_sql:count(Id) > 1 end),
+            q:having(fun([#{id := Id}]) -> pg_sql:count(Id) < 10 end),
+            q:select(fun([#{name := N, id := Id}]) ->
+                #{name => N, cnt => pg_sql:count(Id)}
+            end)
+        ]))),
+    ?assertEqual(
+         <<"select "
+           "count(\"__alias-0\".\"id\") as \"cnt\","
+           "\"__alias-0\".\"name\" as \"name\" "
+           "from \"users\" as \"__alias-0\" "
+           "group by \"__alias-0\".\"name\" "
+           "having ((count(\"__alias-0\".\"id\") > $1) and (count(\"__alias-0\".\"id\") < $2))">>,
+         Sql),
+    ?assertEqual([1, 10], Args).
+
 limit_offset_test() ->
     {Sql, Args, Feilds} = to_sql(
         qsql:select(q:pipe(q:from(?MODULE), [
