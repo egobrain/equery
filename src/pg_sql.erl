@@ -16,6 +16,9 @@
          'not'/1,
          'is'/2,
          is_null/1,
+         is_not_null/1,
+         is_distinct_from/2,
+         is_not_distinct_from/2,
 
          '+'/2,
          '-'/2,
@@ -128,6 +131,18 @@ is(A, B) ->
 -spec 'is_null'(value()) -> qast:ast_node().
 is_null(A) ->
     is(A, qast:raw("null")).
+
+-spec 'is_not_null'(value()) -> qast:ast_node().
+is_not_null(A) ->
+    qast:exp([A, qast:raw(" is not null")], #{type => boolean}).
+
+-spec is_distinct_from(value(), value()) -> qast:ast_node().
+is_distinct_from(A, B) ->
+    qast:exp([A, qast:raw(" is distinct from "), B], #{type => boolean}).
+
+-spec is_not_distinct_from(value(), value()) -> qast:ast_node().
+is_not_distinct_from(A, B) ->
+    qast:exp([A, qast:raw(" is not distinct from "), B], #{type => boolean}).
 
 %% @TODO type opts
 -spec '+'(value(), value()) -> qast:ast_node().

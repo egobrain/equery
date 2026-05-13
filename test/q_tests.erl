@@ -1014,7 +1014,35 @@ is_null_test() ->
     Node = qast:raw("d"),
     ?assertEqual(
          {<<"d is null">>, []},
-         qast:to_sql(pg_sql:'is_null'(Node))).
+         qast:to_sql(pg_sql:'is_null'(Node))),
+    ?assertEqual(
+         {<<"d is not null">>, []},
+         qast:to_sql(pg_sql:'is_not_null'(Node))).
+
+is_distinct_from_test() ->
+    A = qast:raw("a"),
+    B = qast:raw("b"),
+    ?assertEqual(
+         {<<"a is distinct from b">>, []},
+         qast:to_sql(pg_sql:is_distinct_from(A, B))),
+    ?assertEqual(
+         {<<"a is not distinct from b">>, []},
+         qast:to_sql(pg_sql:is_not_distinct_from(A, B))).
+
+is_distinct_from_query_test() ->
+    {Sql, Args, _Feilds} = to_sql(
+        qsql:select(q:pipe(q:from(?MODULE), [
+            q:where(fun([#{name := Name}]) ->
+                pg_sql:is_distinct_from(Name, <<"alice">>)
+            end),
+            q:select(fun([T]) -> maps:with([id], T) end)
+        ]))),
+    ?assertEqual(
+         <<"select \"__alias-0\".\"id\" as \"id\" "
+           "from \"users\" as \"__alias-0\" "
+           "where \"__alias-0\".\"name\" is distinct from $1">>,
+         Sql),
+    ?assertEqual([<<"alice">>], Args).
 
 coalesce_test() ->
     Node1 = qast:raw("e"),
