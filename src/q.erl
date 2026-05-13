@@ -16,6 +16,7 @@
          with/2, with/3,
          recursive/2,
          join/2, join/3, join/4,
+         lateral_join/2, lateral_join/3, lateral_join/4,
          where/1, where/2,
          select/1, select/2,
          set/1, set/2,
@@ -277,6 +278,33 @@ join(JoinType, Info, Fun, #query{data=Data, joins=Joins}=Q) ->
     Q#query{
         data=NewData,
         joins=[{JoinType, JoinAst, call(Fun, [NewData])}|Joins]
+    }.
+
+-spec lateral_join(join_type(), fun((data()) -> query())) -> qfun().
+lateral_join(JoinType, QFun) ->
+    lateral_join(JoinType, QFun, fun(_) -> qast:raw(<<"true">>) end).
+
+-spec lateral_join(join_type(), fun((data()) -> query()), fun((data()) -> qast:ast_node())) -> qfun().
+lateral_join(JoinType, QFun, CondFun) ->
+    fun(Q) -> lateral_join(JoinType, QFun, CondFun, Q) end.
+
+-spec lateral_join(join_type(), fun((data()) -> query()), fun((data()) -> qast:ast_node()), Q) -> Q
+    when Q :: query().
+lateral_join(JoinType, QFun, CondFun, #query{data=Data, joins=Joins}=Q) ->
+    #query{select=RFields}=JoinQ = call(QFun, [Data]),
+    TRef = make_ref(),
+    Fields = maps:map(fun(_, V) -> qast:opts(V) end, RFields),
+    FieldsData = aliased_fields(TRef, Fields),
+    NewData = Data ++ [FieldsData],
+    JoinAst = qast:exp([
+        qast:raw("lateral ("),
+        qsql:select(JoinQ),
+        qast:raw(") as "),
+        qast:alias(TRef)
+    ]),
+    Q#query{
+        data=NewData,
+        joins=[{JoinType, JoinAst, call(CondFun, [NewData])}|Joins]
     }.
 
 -spec where(fun((data()) -> qast:ast_node())) -> qfun().
