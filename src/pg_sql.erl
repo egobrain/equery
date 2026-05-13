@@ -79,6 +79,25 @@
          exists/1
         ]).
 
+%% String functions
+-export([
+         concat/1, concat/2,
+         length/1,
+         char_length/1,
+         lower/1,
+         upper/1,
+         trim/1, trim/2,
+         ltrim/1, ltrim/2,
+         rtrim/1, rtrim/2,
+         replace/3,
+         split_part/3,
+         substring/2, substring/3,
+         strpos/2,
+         starts_with/2,
+         regexp_replace/3, regexp_replace/4,
+         regexp_match/2, regexp_match/3
+        ]).
+
 %% Array functions
 -export([
          '@>'/2
@@ -366,6 +385,96 @@ call(FunName, Args, Opts) ->
 
 '@>'(A, B) ->
     qast:exp([A, qast:raw(" @> "), B], #{type => boolean}).
+
+%% = String functions ==========================================================
+
+-spec concat([value(), ...]) -> qast:ast_node().
+concat(List) when is_list(List) ->
+    call("concat", List, #{type => text}).
+
+-spec concat(value(), value()) -> qast:ast_node().
+concat(A, B) ->
+    call("concat", [A, B], #{type => text}).
+
+-spec length(value()) -> qast:ast_node().
+length(A) ->
+    call("length", [A], #{type => integer}).
+
+-spec char_length(value()) -> qast:ast_node().
+char_length(A) ->
+    call("char_length", [A], #{type => integer}).
+
+-spec lower(value()) -> qast:ast_node().
+lower(A) ->
+    call("lower", [A], qast:opts(A)).
+
+-spec upper(value()) -> qast:ast_node().
+upper(A) ->
+    call("upper", [A], qast:opts(A)).
+
+-spec trim(value()) -> qast:ast_node().
+trim(A) ->
+    call("trim", [A], qast:opts(A)).
+
+-spec trim(value(), value()) -> qast:ast_node().
+trim(A, Chars) ->
+    call("trim", [A, Chars], qast:opts(A)).
+
+-spec ltrim(value()) -> qast:ast_node().
+ltrim(A) ->
+    call("ltrim", [A], qast:opts(A)).
+
+-spec ltrim(value(), value()) -> qast:ast_node().
+ltrim(A, Chars) ->
+    call("ltrim", [A, Chars], qast:opts(A)).
+
+-spec rtrim(value()) -> qast:ast_node().
+rtrim(A) ->
+    call("rtrim", [A], qast:opts(A)).
+
+-spec rtrim(value(), value()) -> qast:ast_node().
+rtrim(A, Chars) ->
+    call("rtrim", [A, Chars], qast:opts(A)).
+
+-spec replace(value(), value(), value()) -> qast:ast_node().
+replace(A, From, To) ->
+    call("replace", [A, From, To], qast:opts(A)).
+
+-spec split_part(value(), value(), value()) -> qast:ast_node().
+split_part(A, Delim, N) ->
+    call("split_part", [A, Delim, N], #{type => text}).
+
+-spec substring(value(), value()) -> qast:ast_node().
+substring(A, From) ->
+    call("substring", [A, From], qast:opts(A)).
+
+-spec substring(value(), value(), value()) -> qast:ast_node().
+substring(A, From, Len) ->
+    call("substring", [A, From, Len], qast:opts(A)).
+
+-spec strpos(value(), value()) -> qast:ast_node().
+strpos(Haystack, Needle) ->
+    call("strpos", [Haystack, Needle], #{type => integer}).
+
+-spec starts_with(value(), value()) -> qast:ast_node().
+starts_with(A, Prefix) ->
+    call("starts_with", [A, Prefix], #{type => boolean}).
+
+-spec regexp_replace(value(), value(), value()) -> qast:ast_node().
+regexp_replace(A, Pattern, Repl) ->
+    call("regexp_replace", [A, Pattern, Repl], qast:opts(A)).
+
+-spec regexp_replace(value(), value(), value(), value()) -> qast:ast_node().
+regexp_replace(A, Pattern, Repl, Flags) ->
+    call("regexp_replace", [A, Pattern, Repl, Flags], qast:opts(A)).
+
+-spec regexp_match(value(), value()) -> qast:ast_node().
+regexp_match(A, Pattern) ->
+    call("regexp_match", [A, Pattern], #{type => {array, text}}).
+
+-spec regexp_match(value(), value(), value()) -> qast:ast_node().
+regexp_match(A, Pattern, Flags) ->
+    call("regexp_match", [A, Pattern, Flags], #{type => {array, text}}).
 
 %% = Type functions ============================================================
 
