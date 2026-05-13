@@ -227,19 +227,22 @@ having_exp(HavingExp) -> qast:exp([qast:raw(" having "), HavingExp]).
 
 order_by_exp([]) -> qast:raw([]);
 order_by_exp(OrderBy) ->
-    OrderExps = lists:map(fun({OrderField,Direction}) ->
-        qast:exp([
-            OrderField,
-            qast:raw(case Direction of
-                asc -> <<" ASC">>;
-                desc -> <<" DESC">>
-            end)
-        ])
-    end, OrderBy),
+    OrderExps = lists:map(fun order_item_exp/1, OrderBy),
     qast:exp([
         qast:raw(" order by "),
         qast:join(OrderExps, qast:raw(","))
     ]).
+
+order_item_exp({OrderField, Direction}) ->
+    qast:exp([OrderField, direction_exp(Direction)]);
+order_item_exp({OrderField, Direction, Nulls}) ->
+    qast:exp([OrderField, direction_exp(Direction), nulls_exp(Nulls)]).
+
+direction_exp(asc) -> qast:raw(<<" ASC">>);
+direction_exp(desc) -> qast:raw(<<" DESC">>).
+
+nulls_exp(nulls_first) -> qast:raw(<<" NULLS FIRST">>);
+nulls_exp(nulls_last) -> qast:raw(<<" NULLS LAST">>).
 
 limit_exp(undefined) -> qast:raw([]);
 limit_exp(Limit) ->

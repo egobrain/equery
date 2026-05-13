@@ -836,6 +836,44 @@ q_having_compose_test() ->
          Sql),
     ?assertEqual([1, 10], Args).
 
+order_by_nulls_test() ->
+    {Sql, _Args, _Feilds} = to_sql(
+        qsql:select(q:pipe(q:from(?MODULE), [
+            q:order_by(fun([#{name := Name, id := Id}]) ->
+                [{Name, asc, nulls_first}, {Id, desc, nulls_last}]
+            end)
+        ]))),
+    ?assertEqual(
+         <<"select "
+           "\"__alias-0\".\"id\" as \"id\","
+           "\"__alias-0\".\"name\" as \"name\","
+           "\"__alias-0\".\"password\" as \"password\","
+           "\"__alias-0\".\"salt\" as \"salt\" "
+           "from \"users\" as \"__alias-0\" "
+           "order by "
+           "\"__alias-0\".\"name\" ASC NULLS FIRST,"
+           "\"__alias-0\".\"id\" DESC NULLS LAST">>,
+         Sql).
+
+order_by_mixed_test() ->
+    {Sql, _Args, _Feilds} = to_sql(
+        qsql:select(q:pipe(q:from(?MODULE), [
+            q:order_by(fun([#{name := Name, id := Id}]) ->
+                [{Name, asc}, {Id, desc, nulls_first}]
+            end)
+        ]))),
+    ?assertEqual(
+         <<"select "
+           "\"__alias-0\".\"id\" as \"id\","
+           "\"__alias-0\".\"name\" as \"name\","
+           "\"__alias-0\".\"password\" as \"password\","
+           "\"__alias-0\".\"salt\" as \"salt\" "
+           "from \"users\" as \"__alias-0\" "
+           "order by "
+           "\"__alias-0\".\"name\" ASC,"
+           "\"__alias-0\".\"id\" DESC NULLS FIRST">>,
+         Sql).
+
 limit_offset_test() ->
     {Sql, Args, Feilds} = to_sql(
         qsql:select(q:pipe(q:from(?MODULE), [
