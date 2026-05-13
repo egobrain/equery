@@ -79,6 +79,21 @@
          exists/1
         ]).
 
+%% Date/time functions
+-export([
+         now/0,
+         current_timestamp/0,
+         current_date/0,
+         current_time/0,
+         date_trunc/2,
+         extract/2,
+         date_part/2,
+         age/1, age/2,
+         to_char/2,
+         to_date/2,
+         to_timestamp/1, to_timestamp/2
+        ]).
+
 %% String functions
 -export([
          concat/1, concat/2,
@@ -385,6 +400,99 @@ call(FunName, Args, Opts) ->
 
 '@>'(A, B) ->
     qast:exp([A, qast:raw(" @> "), B], #{type => boolean}).
+
+%% = Date/time functions =======================================================
+
+-spec now() -> qast:ast_node().
+now() ->
+    call("now", [], #{type => timestamptz}).
+
+-spec current_timestamp() -> qast:ast_node().
+current_timestamp() ->
+    qast:raw("current_timestamp", #{type => timestamptz}).
+
+-spec current_date() -> qast:ast_node().
+current_date() ->
+    qast:raw("current_date", #{type => date}).
+
+-spec current_time() -> qast:ast_node().
+current_time() ->
+    qast:raw("current_time", #{type => timetz}).
+
+-type datetime_field() ::
+        century | day | decade | dow | doy | epoch | hour |
+        isodow | isoyear | julian | microseconds | millennium |
+        milliseconds | minute | month | quarter | second |
+        timezone | timezone_hour | timezone_minute | week | year.
+
+-spec datetime_field_str(datetime_field()) -> binary().
+datetime_field_str(century) -> <<"century">>;
+datetime_field_str(day) -> <<"day">>;
+datetime_field_str(decade) -> <<"decade">>;
+datetime_field_str(dow) -> <<"dow">>;
+datetime_field_str(doy) -> <<"doy">>;
+datetime_field_str(epoch) -> <<"epoch">>;
+datetime_field_str(hour) -> <<"hour">>;
+datetime_field_str(isodow) -> <<"isodow">>;
+datetime_field_str(isoyear) -> <<"isoyear">>;
+datetime_field_str(julian) -> <<"julian">>;
+datetime_field_str(microseconds) -> <<"microseconds">>;
+datetime_field_str(millennium) -> <<"millennium">>;
+datetime_field_str(milliseconds) -> <<"milliseconds">>;
+datetime_field_str(minute) -> <<"minute">>;
+datetime_field_str(month) -> <<"month">>;
+datetime_field_str(quarter) -> <<"quarter">>;
+datetime_field_str(second) -> <<"second">>;
+datetime_field_str(timezone) -> <<"timezone">>;
+datetime_field_str(timezone_hour) -> <<"timezone_hour">>;
+datetime_field_str(timezone_minute) -> <<"timezone_minute">>;
+datetime_field_str(week) -> <<"week">>;
+datetime_field_str(year) -> <<"year">>.
+
+-spec date_trunc(datetime_field(), value()) -> qast:ast_node().
+date_trunc(Field, Source) ->
+    FieldBin = datetime_field_str(Field),
+    call("date_trunc", [qast:value(FieldBin, #{type => text}), Source], qast:opts(Source)).
+
+-spec extract(datetime_field(), value()) -> qast:ast_node().
+extract(Field, Source) ->
+    FieldBin = datetime_field_str(Field),
+    qast:exp([
+        qast:raw("extract("),
+        qast:raw(FieldBin),
+        qast:raw(" from "),
+        Source,
+        qast:raw(")")
+    ], #{type => numeric}).
+
+-spec date_part(datetime_field(), value()) -> qast:ast_node().
+date_part(Field, Source) ->
+    FieldBin = datetime_field_str(Field),
+    call("date_part", [qast:value(FieldBin, #{type => text}), Source], #{type => float8}).
+
+-spec age(value()) -> qast:ast_node().
+age(A) ->
+    call("age", [A], #{type => interval}).
+
+-spec age(value(), value()) -> qast:ast_node().
+age(A, B) ->
+    call("age", [A, B], #{type => interval}).
+
+-spec to_char(value(), value()) -> qast:ast_node().
+to_char(A, Fmt) ->
+    call("to_char", [A, Fmt], #{type => text}).
+
+-spec to_date(value(), value()) -> qast:ast_node().
+to_date(A, Fmt) ->
+    call("to_date", [A, Fmt], #{type => date}).
+
+-spec to_timestamp(value()) -> qast:ast_node().
+to_timestamp(A) ->
+    call("to_timestamp", [A], #{type => timestamptz}).
+
+-spec to_timestamp(value(), value()) -> qast:ast_node().
+to_timestamp(A, Fmt) ->
+    call("to_timestamp", [A, Fmt], #{type => timestamptz}).
 
 %% = String functions ==========================================================
 

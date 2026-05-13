@@ -1239,6 +1239,54 @@ numeric_funs_test_() ->
         ?assertEqual({Exp, []}, qast:to_sql(Ast))
     end} || {Exp, Ast} <- Tests].
 
+datetime_funs_test_() ->
+    Src = qast:raw("t"),
+    Tests = [
+        {<<"now()">>, [], pg_sql:now()},
+        {<<"current_timestamp">>, [], pg_sql:current_timestamp()},
+        {<<"current_date">>, [], pg_sql:current_date()},
+        {<<"current_time">>, [], pg_sql:current_time()},
+        {<<"date_trunc($1,t)">>, [<<"day">>], pg_sql:date_trunc(day, Src)},
+        {<<"date_trunc($1,t)">>, [<<"hour">>], pg_sql:date_trunc(hour, Src)},
+        {<<"extract(year from t)">>, [], pg_sql:extract(year, Src)},
+        {<<"extract(month from t)">>, [], pg_sql:extract(month, Src)},
+        {<<"date_part($1,t)">>, [<<"dow">>], pg_sql:date_part(dow, Src)},
+        {<<"age(t)">>, [], pg_sql:age(Src)},
+        {<<"age(t,t)">>, [], pg_sql:age(Src, Src)},
+        {<<"to_char(t,$1)">>, [<<"YYYY">>], pg_sql:to_char(Src, <<"YYYY">>)},
+        {<<"to_date($1,$2)">>, [<<"2024">>, <<"YYYY">>],
+            pg_sql:to_date(<<"2024">>, <<"YYYY">>)},
+        {<<"to_timestamp(t)">>, [], pg_sql:to_timestamp(Src)},
+        {<<"to_timestamp($1,$2)">>, [<<"2024">>, <<"YYYY">>],
+            pg_sql:to_timestamp(<<"2024">>, <<"YYYY">>)}
+    ],
+    [{binary_to_list(Exp), fun() ->
+        ?assertEqual({Exp, ExpArgs}, qast:to_sql(Ast))
+    end} || {Exp, ExpArgs, Ast} <- Tests].
+
+datetime_invalid_field_test() ->
+    Src = qast:raw("t"),
+    ?assertError(function_clause, pg_sql:extract(not_a_field, Src)),
+    ?assertError(function_clause, pg_sql:date_trunc('"; DROP TABLE x; --', Src)),
+    ?assertError(function_clause, pg_sql:date_part(<<"day">>, Src)).
+
+datetime_query_test() ->
+    Created = qast:field(make_ref(), created_at, #{type => timestamptz}),
+    {Sql, Args, _Feilds} = to_sql(
+        qsql:select(q:pipe(q:from(?MODULE), [
+            q:select(fun([_]) ->
+                #{day => pg_sql:date_trunc(day, Created),
+                  yr  => pg_sql:extract(year, Created)}
+            end)
+        ]))),
+    ?assertEqual(
+         <<"select "
+           "date_trunc($1,\"__alias-0\".\"created_at\") as \"day\","
+           "extract(year from \"__alias-0\".\"created_at\") as \"yr\" "
+           "from \"users\" as \"__alias-1\"">>,
+         Sql),
+    ?assertEqual([<<"day">>], Args).
+
 string_funs_test_() ->
     A = qast:raw("a"),
     B = qast:raw("b"),
