@@ -57,6 +57,8 @@
 
 -export([
          coalesce/1,
+         case_when/1,
+         case_when/2,
          in/2,
          exists/1
         ]).
@@ -240,6 +242,30 @@ coalesce([H|_]=List) ->
         qast:join([Node || Node <- List], qast:raw(",")),
         qast:raw(")")
     ], maps:with([type], qast:opts(H))).
+
+-spec case_when([{value(), value()}, ...]) -> qast:ast_node().
+case_when(Whens) ->
+    case_when_(Whens, undefined).
+
+-spec case_when([{value(), value()}, ...], value()) -> qast:ast_node().
+case_when(Whens, Else) ->
+    case_when_(Whens, {else, Else}).
+
+case_when_([{_, FirstThen}|_]=Whens, ElseSpec) ->
+    Opts = maps:with([type], qast:opts(FirstThen)),
+    WhenExps = lists:map(fun({W, T}) ->
+        qast:exp([qast:raw(" when "), W, qast:raw(" then "), T])
+    end, Whens),
+    ElseExp = case ElseSpec of
+        undefined -> qast:raw("");
+        {else, E} -> qast:exp([qast:raw(" else "), E])
+    end,
+    qast:exp([
+        qast:raw("case"),
+        qast:exp(WhenExps),
+        ElseExp,
+        qast:raw(" end")
+    ], Opts).
 
 in(A, #query{}=Q) ->
     qast:exp([A, qast:raw(" in ("), qsql:select(Q), qast:raw(")")], #{type => boolean});

@@ -1052,6 +1052,43 @@ coalesce_test() ->
          {<<"coalesce(e,f,g)">>, []},
          qast:to_sql(pg_sql:'coalesce'([Node1,Node2,Node3]))).
 
+case_when_test() ->
+    A = qast:raw("a"),
+    B = qast:raw("b"),
+    C = qast:raw("c"),
+    D = qast:raw("d"),
+    ?assertEqual(
+         {<<"case when a then b end">>, []},
+         qast:to_sql(pg_sql:case_when([{A, B}]))),
+    ?assertEqual(
+         {<<"case when a then b else c end">>, []},
+         qast:to_sql(pg_sql:case_when([{A, B}], C))),
+    ?assertEqual(
+         {<<"case when a then b when c then d end">>, []},
+         qast:to_sql(pg_sql:case_when([{A, B}, {C, D}]))).
+
+case_when_query_test() ->
+    {Sql, Args, Feilds} = to_sql(
+        qsql:select(q:pipe(q:from(?MODULE), [
+            q:select(fun([#{id := Id}]) ->
+                #{bucket => pg_sql:case_when([
+                    {Id > 10, <<"big">>},
+                    {Id > 5, <<"medium">>}
+                ], <<"small">>)}
+            end)
+        ]))),
+    ?assertEqual(
+         <<"select "
+           "case"
+           " when (\"__alias-0\".\"id\" > $1) then $2"
+           " when (\"__alias-0\".\"id\" > $3) then $4"
+           " else $5"
+           " end as \"bucket\" "
+           "from \"users\" as \"__alias-0\"">>,
+         Sql),
+    ?assertEqual([10, <<"big">>, 5, <<"medium">>, <<"small">>], Args),
+    ?assertEqual({model, ?MODULE, [{bucket, #{}}]}, Feilds).
+
 aggs_test_() ->
     Tests = [
         {fun pg_sql:max/1, "max"},
