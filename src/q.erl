@@ -46,7 +46,10 @@
 -type data() :: [#{atom() => qast:ast_node()}].
 -type select() :: #{atom() => qast:ast_node()} | qast:ast_node().
 -type set() :: #{atom() => qast:ast_node()} | query().
--type order() :: [{qast:ast_node(), asc | desc}].
+-type order_nulls() :: nulls_first | nulls_last.
+-type order_item() :: {qast:ast_node(), asc | desc}
+                    | {qast:ast_node(), asc | desc, order_nulls()}.
+-type order() :: [order_item()].
 -type distinct() :: all | [atom()].
 -type join_type() :: inner | left | right | full | {left, outer} | {right, outer} | {full, outer}.
 -type row_lock_level() :: for_update | for_no_key_update | for_share | for_key_share.
