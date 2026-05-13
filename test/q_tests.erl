@@ -1183,6 +1183,60 @@ numeric_funs_test_() ->
         ?assertEqual({Exp, []}, qast:to_sql(Ast))
     end} || {Exp, Ast} <- Tests].
 
+string_funs_test_() ->
+    A = qast:raw("a"),
+    B = qast:raw("b"),
+    C = qast:raw("c"),
+    F = qast:raw("f"),
+    Tests = [
+        {<<"concat(a,b)">>, pg_sql:concat(A, B)},
+        {<<"concat(a,b,c)">>, pg_sql:concat([A, B, C])},
+        {<<"length(a)">>, pg_sql:length(A)},
+        {<<"char_length(a)">>, pg_sql:char_length(A)},
+        {<<"lower(a)">>, pg_sql:lower(A)},
+        {<<"upper(a)">>, pg_sql:upper(A)},
+        {<<"trim(a)">>, pg_sql:trim(A)},
+        {<<"trim(a,b)">>, pg_sql:trim(A, B)},
+        {<<"ltrim(a)">>, pg_sql:ltrim(A)},
+        {<<"ltrim(a,b)">>, pg_sql:ltrim(A, B)},
+        {<<"rtrim(a)">>, pg_sql:rtrim(A)},
+        {<<"rtrim(a,b)">>, pg_sql:rtrim(A, B)},
+        {<<"replace(a,b,c)">>, pg_sql:replace(A, B, C)},
+        {<<"split_part(a,b,c)">>, pg_sql:split_part(A, B, C)},
+        {<<"substring(a,b)">>, pg_sql:substring(A, B)},
+        {<<"substring(a,b,c)">>, pg_sql:substring(A, B, C)},
+        {<<"strpos(a,b)">>, pg_sql:strpos(A, B)},
+        {<<"starts_with(a,b)">>, pg_sql:starts_with(A, B)},
+        {<<"regexp_replace(a,b,c)">>, pg_sql:regexp_replace(A, B, C)},
+        {<<"regexp_replace(a,b,c,f)">>, pg_sql:regexp_replace(A, B, C, F)},
+        {<<"regexp_match(a,b)">>, pg_sql:regexp_match(A, B)},
+        {<<"regexp_match(a,b,f)">>, pg_sql:regexp_match(A, B, F)}
+    ],
+    [{binary_to_list(Exp), fun() ->
+        ?assertEqual({Exp, []}, qast:to_sql(Ast))
+    end} || {Exp, Ast} <- Tests].
+
+string_funs_query_test() ->
+    {Sql, Args, Feilds} = to_sql(
+        qsql:select(q:pipe(q:from(?MODULE), [
+            q:where(fun([#{name := N}]) ->
+                pg_sql:length(N) > 3 andalso
+                pg_sql:starts_with(pg_sql:lower(N), <<"al">>)
+            end),
+            q:select(fun([#{name := N}]) ->
+                #{upper => pg_sql:upper(N)}
+            end)
+        ]))),
+    ?assertEqual(
+         <<"select "
+           "upper(\"__alias-0\".\"name\") as \"upper\" "
+           "from \"users\" as \"__alias-0\" "
+           "where ((length(\"__alias-0\".\"name\") > $1) and "
+           "starts_with(lower(\"__alias-0\".\"name\"),$2))">>,
+         Sql),
+    ?assertEqual([3, <<"al">>], Args),
+    ?assertEqual({model, ?MODULE, [{upper, #{required => true, type => {varchar, 60}}}]}, Feilds).
+
 rem_op_test() ->
     {Sql, Args, _Feilds} = to_sql(
         qsql:select(q:pipe(q:from(?MODULE), [
