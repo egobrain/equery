@@ -784,6 +784,62 @@ q_group_by_test() ->
     ?assertEqual([<<"test1">>, <<"test2">>], Args),
     ?assertEqual({model, ?MODULE, [{cnt, #{type => integer}}]}, Feilds).
 
+q_lateral_join_test() ->
+    {Sql, Args, _Feilds} = to_sql(
+        qsql:select(q:pipe(q:from(?MODULE), [
+            q:lateral_join(left, fun([#{id := UserId}]) ->
+                q:pipe(q:from(?COMMENT_SCHEMA), [
+                    q:where(fun([#{author := A}]) -> A =:= UserId end),
+                    q:limit(3)
+                ])
+            end),
+            q:select(fun([#{name := N}, #{text := T}]) ->
+                #{name => N, comment => T}
+            end)
+        ]))),
+    ?assertEqual(
+         <<"select "
+           "\"__alias-0\".\"text\" as \"comment\","
+           "\"__alias-1\".\"name\" as \"name\" "
+           "from \"users\" as \"__alias-1\" "
+           "left join lateral ("
+               "select "
+               "\"__alias-2\".\"author\" as \"author\","
+               "\"__alias-2\".\"id\" as \"id\","
+               "\"__alias-2\".\"text\" as \"text\" "
+               "from \"comments\" as \"__alias-2\" "
+               "where (\"__alias-2\".\"author\" = \"__alias-1\".\"id\") "
+               "limit $1"
+           ") as \"__alias-0\" on true">>,
+         Sql),
+    ?assertEqual([3], Args).
+
+q_lateral_join_with_cond_test() ->
+    {Sql, _Args, _Feilds} = to_sql(
+        qsql:select(q:pipe(q:from(?MODULE), [
+            q:lateral_join(inner,
+                fun([#{id := UserId}]) ->
+                    q:pipe(q:from(?COMMENT_SCHEMA), [
+                        q:where(fun([#{author := A}]) -> A =:= UserId end)
+                    ])
+                end,
+                fun([_, #{id := CId}]) -> CId > 0 end),
+            q:select(fun([T, _]) -> maps:with([id], T) end)
+        ]))),
+    ?assertEqual(
+         <<"select "
+           "\"__alias-0\".\"id\" as \"id\" "
+           "from \"users\" as \"__alias-0\" "
+           "inner join lateral ("
+               "select "
+               "\"__alias-1\".\"author\" as \"author\","
+               "\"__alias-1\".\"id\" as \"id\","
+               "\"__alias-1\".\"text\" as \"text\" "
+               "from \"comments\" as \"__alias-1\" "
+               "where (\"__alias-1\".\"author\" = \"__alias-0\".\"id\")"
+           ") as \"__alias-2\" on (\"__alias-2\".\"id\" > $1)">>,
+         Sql).
+
 q_having_test() ->
     {Sql, Args, Feilds} = to_sql(
         qsql:select(q:pipe(q:from(?MODULE), [
