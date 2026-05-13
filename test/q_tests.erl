@@ -1160,6 +1160,42 @@ trunc_test() ->
          {<<"trunc(v,$1)">>, [2]},
          qast:to_sql(pg_sql:'trunc'(Node, 2))).
 
+numeric_funs_test_() ->
+    N = qast:raw("v"),
+    M = qast:raw("m"),
+    Tests = [
+        {<<"mod(v,m)">>, pg_sql:mod(N, M)},
+        {<<"div(v,m)">>, pg_sql:'div'(N, M)},
+        {<<"round(v)">>, pg_sql:round(N)},
+        {<<"round(v,m)">>, pg_sql:round(N, M)},
+        {<<"ceil(v)">>, pg_sql:ceil(N)},
+        {<<"floor(v)">>, pg_sql:floor(N)},
+        {<<"power(v,m)">>, pg_sql:power(N, M)},
+        {<<"sqrt(v)">>, pg_sql:sqrt(N)},
+        {<<"ln(v)">>, pg_sql:ln(N)},
+        {<<"log(v)">>, pg_sql:log(N)},
+        {<<"log(m,v)">>, pg_sql:log(M, N)},
+        {<<"exp(v)">>, pg_sql:exp(N)},
+        {<<"sign(v)">>, pg_sql:sign(N)},
+        {<<"random()">>, pg_sql:random()}
+    ],
+    [{binary_to_list(Exp), fun() ->
+        ?assertEqual({Exp, []}, qast:to_sql(Ast))
+    end} || {Exp, Ast} <- Tests].
+
+rem_op_test() ->
+    {Sql, Args, _Feilds} = to_sql(
+        qsql:select(q:pipe(q:from(?MODULE), [
+            q:where(fun([#{id := Id}]) -> Id rem 2 =:= 0 end),
+            q:select(fun([T]) -> maps:with([id], T) end)
+        ]))),
+    ?assertEqual(
+         <<"select \"__alias-0\".\"id\" as \"id\" "
+           "from \"users\" as \"__alias-0\" "
+           "where (mod(\"__alias-0\".\"id\",$1) = $2)">>,
+         Sql),
+    ?assertEqual([2, 0], Args).
+
 ops_test_() ->
     Tests = [
         {fun pg_sql:max/2, "GREATEST"},

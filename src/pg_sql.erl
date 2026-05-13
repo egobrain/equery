@@ -24,7 +24,23 @@
          '-'/2,
          '*'/2,
          '/'/2,
+         'div'/2,
+         'rem'/2,
          'abs'/1
+        ]).
+
+-export([
+         mod/2,
+         round/1, round/2,
+         ceil/1,
+         floor/1,
+         power/2,
+         sqrt/1,
+         ln/1,
+         log/1, log/2,
+         exp/1,
+         sign/1,
+         random/0
         ]).
 
 -export([
@@ -163,6 +179,67 @@ is_not_distinct_from(A, B) ->
 -spec 'abs'(value()) -> qast:ast_node().
 abs(A) ->
     qast:exp([qast:raw("abs("), A, qast:raw(")")], qast:opts(A)).
+
+-spec 'div'(value(), value()) -> qast:ast_node().
+'div'(A, B) ->
+    call("div", [A, B], qast:opts(A)).
+
+-spec 'rem'(value(), value()) -> qast:ast_node().
+'rem'(A, B) -> mod(A, B).
+
+%% = Numeric functions =========================================================
+
+-spec mod(value(), value()) -> qast:ast_node().
+mod(A, B) ->
+    call("mod", [A, B], qast:opts(A)).
+
+-spec round(value()) -> qast:ast_node().
+round(A) ->
+    call("round", [A], qast:opts(A)).
+
+-spec round(value(), value()) -> qast:ast_node().
+round(A, N) ->
+    call("round", [A, N], qast:opts(A)).
+
+-spec ceil(value()) -> qast:ast_node().
+ceil(A) ->
+    call("ceil", [A], qast:opts(A)).
+
+-spec floor(value()) -> qast:ast_node().
+floor(A) ->
+    call("floor", [A], qast:opts(A)).
+
+-spec power(value(), value()) -> qast:ast_node().
+power(A, B) ->
+    call("power", [A, B], qast:opts(A)).
+
+-spec sqrt(value()) -> qast:ast_node().
+sqrt(A) ->
+    call("sqrt", [A], qast:opts(A)).
+
+-spec ln(value()) -> qast:ast_node().
+ln(A) ->
+    call("ln", [A], qast:opts(A)).
+
+-spec log(value()) -> qast:ast_node().
+log(A) ->
+    call("log", [A], qast:opts(A)).
+
+-spec log(value(), value()) -> qast:ast_node().
+log(B, A) ->
+    call("log", [B, A], qast:opts(A)).
+
+-spec exp(value()) -> qast:ast_node().
+exp(A) ->
+    call("exp", [A], qast:opts(A)).
+
+-spec sign(value()) -> qast:ast_node().
+sign(A) ->
+    call("sign", [A], qast:opts(A)).
+
+-spec random() -> qast:ast_node().
+random() ->
+    call("random", [], #{}).
 
 %% = LIKE ======================================================================
 
