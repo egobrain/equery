@@ -20,6 +20,7 @@ select(#query{
             distinct=Distinct,
             joins=Joins,
             group_by=GroupBy,
+            having=Having,
             order_by=OrderBy,
             limit=Limit,
             offset=Offset,
@@ -35,6 +36,7 @@ select(#query{
         joins_exp(Joins),
         where_exp(Where),
         group_by_exp(GroupBy),
+        having_exp(Having),
         order_by_exp(OrderBy),
         limit_exp(Limit),
         offset_exp(Offset),
@@ -219,6 +221,9 @@ group_by_exp(GroupBy) ->
         qast:raw(" group by "),
         qast:join(GroupBy, qast:raw(","))
     ]).
+
+having_exp(undefined) -> qast:raw([]);
+having_exp(HavingExp) -> qast:exp([qast:raw(" having "), HavingExp]).
 
 order_by_exp([]) -> qast:raw([]);
 order_by_exp(OrderBy) ->

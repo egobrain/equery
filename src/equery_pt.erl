@@ -43,6 +43,7 @@ search_and_compile({call, _, {remote, _, {atom, _, q}, {atom, _, F}}, Args}=Node
       F =:= order_by;
       F =:= select;
       F =:= where;
+      F =:= having;
       F =:= recursive;
       F =:= on_conflict;
       F =:= on_conflict_where
