@@ -80,6 +80,8 @@
 -export([
          min/2,
          max/2,
+         greatest/1,
+         least/1,
          row/1,
          row/2
         ]).
@@ -476,6 +478,14 @@ min(A, B) ->
 -spec 'max'(value(), value()) -> qast:ast_node().
 max(A, B) ->
     qast:exp([qast:raw("GREATEST("), A, qast:raw(","), B, qast:raw(")")], qast:opts(A)).
+
+-spec greatest([value(), ...]) -> qast:ast_node().
+greatest([H | _] = List) ->
+    call("GREATEST", List, qast:opts(H)).
+
+-spec least([value(), ...]) -> qast:ast_node().
+least([H | _] = List) ->
+    call("LEAST", List, qast:opts(H)).
 
 %% = Additional operations =====================================================
 
