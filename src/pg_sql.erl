@@ -60,7 +60,20 @@
          min/1,
          max/1,
          distinct/1,
-         array_agg/1,
+         array_agg/1, array_agg/2,
+         avg/1,
+         bool_and/1,
+         bool_or/1,
+         every/1,
+         string_agg/2, string_agg/3,
+         json_agg/1, json_agg/2,
+         jsonb_agg/1, jsonb_agg/2,
+         json_object_agg/2,
+         jsonb_object_agg/2,
+         percentile_cont/2,
+         percentile_disc/2,
+         mode/1,
+         filter/2,
          trunc/2
         ]).
 
@@ -316,6 +329,123 @@ array_agg(Ast) ->
     Type = maps:get(type, Opts, undefined),
     NewOpts = Opts#{type => {array, Type}},
     call("array_agg", [Ast], NewOpts).
+
+-type agg_order_spec() :: value()
+                        | {value(), asc | desc}
+                        | {value(), asc | desc, nulls_first | nulls_last}.
+-type agg_order_specs() :: [agg_order_spec(), ...].
+
+-spec 'array_agg'(value(), agg_order_specs()) -> qast:ast_node().
+array_agg(Ast, OrderSpecs) ->
+    Opts = qast:opts(Ast),
+    Type = maps:get(type, Opts, undefined),
+    NewOpts = Opts#{type => {array, Type}},
+    qast:exp([
+        qast:raw("array_agg("), Ast,
+        agg_order_by(OrderSpecs),
+        qast:raw(")")
+    ], NewOpts).
+
+-spec avg(value()) -> qast:ast_node().
+avg(A) ->
+    call("avg", [A], qast:opts(A)).
+
+-spec bool_and(value()) -> qast:ast_node().
+bool_and(A) ->
+    call("bool_and", [A], #{type => boolean}).
+
+-spec bool_or(value()) -> qast:ast_node().
+bool_or(A) ->
+    call("bool_or", [A], #{type => boolean}).
+
+-spec every(value()) -> qast:ast_node().
+every(A) ->
+    call("every", [A], #{type => boolean}).
+
+-spec string_agg(value(), value()) -> qast:ast_node().
+string_agg(Expr, Sep) ->
+    call("string_agg", [Expr, Sep], #{type => text}).
+
+-spec string_agg(value(), value(), agg_order_specs()) -> qast:ast_node().
+string_agg(Expr, Sep, OrderSpecs) ->
+    qast:exp([
+        qast:raw("string_agg("), Expr, qast:raw(","), Sep,
+        agg_order_by(OrderSpecs),
+        qast:raw(")")
+    ], #{type => text}).
+
+-spec json_agg(value()) -> qast:ast_node().
+json_agg(A) ->
+    call("json_agg", [A], #{type => json}).
+
+-spec json_agg(value(), agg_order_specs()) -> qast:ast_node().
+json_agg(A, OrderSpecs) ->
+    qast:exp([
+        qast:raw("json_agg("), A,
+        agg_order_by(OrderSpecs),
+        qast:raw(")")
+    ], #{type => json}).
+
+-spec jsonb_agg(value()) -> qast:ast_node().
+jsonb_agg(A) ->
+    call("jsonb_agg", [A], #{type => jsonb}).
+
+-spec jsonb_agg(value(), agg_order_specs()) -> qast:ast_node().
+jsonb_agg(A, OrderSpecs) ->
+    qast:exp([
+        qast:raw("jsonb_agg("), A,
+        agg_order_by(OrderSpecs),
+        qast:raw(")")
+    ], #{type => jsonb}).
+
+-spec json_object_agg(value(), value()) -> qast:ast_node().
+json_object_agg(K, V) ->
+    call("json_object_agg", [K, V], #{type => json}).
+
+-spec jsonb_object_agg(value(), value()) -> qast:ast_node().
+jsonb_object_agg(K, V) ->
+    call("jsonb_object_agg", [K, V], #{type => jsonb}).
+
+-spec percentile_cont(value(), value()) -> qast:ast_node().
+percentile_cont(Frac, OrderExpr) ->
+    qast:exp([
+        qast:raw("percentile_cont("), Frac,
+        qast:raw(") within group (order by "), OrderExpr,
+        qast:raw(")")
+    ], qast:opts(OrderExpr)).
+
+-spec percentile_disc(value(), value()) -> qast:ast_node().
+percentile_disc(Frac, OrderExpr) ->
+    qast:exp([
+        qast:raw("percentile_disc("), Frac,
+        qast:raw(") within group (order by "), OrderExpr,
+        qast:raw(")")
+    ], qast:opts(OrderExpr)).
+
+-spec mode(value()) -> qast:ast_node().
+mode(OrderExpr) ->
+    qast:exp([
+        qast:raw("mode() within group (order by "), OrderExpr,
+        qast:raw(")")
+    ], qast:opts(OrderExpr)).
+
+-spec filter(qast:ast_node(), value()) -> qast:ast_node().
+filter(AggAst, Cond) ->
+    qast:exp([
+        AggAst, qast:raw(" filter (where "), Cond, qast:raw(")")
+    ], qast:opts(AggAst)).
+
+agg_order_by(Specs) ->
+    Exps = lists:map(fun agg_order_spec_exp/1, Specs),
+    qast:exp([qast:raw(" order by "), qast:join(Exps, qast:raw(","))]).
+
+agg_order_spec_exp({_F, D} = T) when D =:= asc; D =:= desc ->
+    equery_utils:order_item_exp(T);
+agg_order_spec_exp({_F, D, N} = T) when
+        (D =:= asc orelse D =:= desc),
+        (N =:= nulls_first orelse N =:= nulls_last) ->
+    equery_utils:order_item_exp(T);
+agg_order_spec_exp(F) -> F.
 
 -spec 'trunc'(value(), qast:ast_node() | non_neg_integer()) -> qast:ast_node().
 'trunc'(V, N) ->
