@@ -170,14 +170,17 @@ using(Ast, #query{tables=[_|_]=Tables, data=Data}=Query) ->
         data = Data ++ [FieldsExp]
     }.
 
-table_feilds(#{table := Table}=Schema) ->
+table_feilds(#{table := _Table}=Schema) ->
     SchemaFields = maps:get(fields, Schema, #{}),
     TRef = make_ref(),
     Fields = maps:map(
         fun(N, Opts) -> qast:field(TRef, N, Opts) end,
         SchemaFields),
-    RealTable = {real, Table, TRef},
+    RealTable = {real, schema_table_id(Schema), TRef},
     {RealTable, Fields}.
+
+schema_table_id(#{schema := S, table := T}) -> {S, T};
+schema_table_id(#{table := T}) -> T.
 
 
 %% = Recursive =================================================================
@@ -265,14 +268,14 @@ join(JoinType, {alias, TableAlias, FieldsExp}, Fun, #query{data=Data, joins=Join
 join(JoinType, Info, Fun, #query{data=Data, joins=Joins}=Q) ->
     JoinSchema = get_schema(Info),
     SchemaFields = maps:get(fields, JoinSchema, #{}),
-    Table = maps:get(table, JoinSchema),
+    TableId = schema_table_id(JoinSchema),
     TRef = make_ref(),
     Fields = maps:map(
         fun(N, O) -> qast:field(TRef, N, O) end,
         SchemaFields),
     NewData = Data ++ [Fields],
     JoinAst = qast:exp([
-        qast:raw([equery_utils:wrap(Table), " as "]),
+        qast:raw([equery_utils:wrap_table(TableId), " as "]),
         qast:alias(TRef)
     ]),
     Q#query{
@@ -454,8 +457,8 @@ lock(RowLockLevel, WaitPolicy, Fun, #query{tables = AllTables} = Q) ->
 lookup_tables(Models, Tables) when is_list(Models) ->
     lists:flatmap(
         fun(M) ->
-            TableName = maps:get(table, get_schema(M)),
-            RealTables = [T || {real, Table, _TRef} = T <- Tables, Table =:= TableName],
+            TableId = schema_table_id(get_schema(M)),
+            RealTables = [T || {real, Id, _TRef} = T <- Tables, Id =:= TableId],
             case RealTables of
                 [] -> error({unknown_table, M});
                 _ -> RealTables
