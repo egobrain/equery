@@ -823,7 +823,7 @@ set_type(Ast, Type) ->
     qast:set_opts(Ast, Opts#{type => Type}).
 
 type_str(Atom) when is_atom(Atom) ->
-    atom_to_binary(Atom, latin1);
+    atom_to_binary(Atom, utf8);
 type_str({array, Atom}) when is_atom(Atom) ->
     iolist_to_binary([type_str(Atom), "[]"]);
 type_str({Type, Args}) when Type =/= array ->
