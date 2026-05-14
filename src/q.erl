@@ -62,7 +62,8 @@
 -type conflict_action() :: nothing | conflict_update() | {conflict_update(), qast:ast_node()}.
 
 %% internal
--type real_table() :: {real, iolist(), reference()}.
+-type table_id() :: binary() | {binary(), binary()}.
+-type real_table() :: {real, table_id(), reference()}.
 -type stored_conflict_target() :: conflict_target() | {conflict_columns(), qast:ast_node()}.
 
 -export_type([query/0]).

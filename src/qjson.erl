@@ -134,7 +134,8 @@ jsonb_set(Target, Path, Value) ->
 -spec jsonb_set(qast:ast_node(), [binary()], qast:ast_node() | any(), boolean())
     -> qast:ast_node().
 jsonb_set(Target, Path, Value, CreateMissing) ->
-    set_call("jsonb_set", Target, Path, Value, [CreateMissing]).
+    set_call("jsonb_set", Target, Path, Value,
+             [qast:value(CreateMissing, #{type => boolean})]).
 
 -spec jsonb_insert(qast:ast_node(), [binary()], qast:ast_node() | any())
     -> qast:ast_node().
@@ -144,7 +145,8 @@ jsonb_insert(Target, Path, Value) ->
 -spec jsonb_insert(qast:ast_node(), [binary()], qast:ast_node() | any(), boolean())
     -> qast:ast_node().
 jsonb_insert(Target, Path, Value, InsertAfter) ->
-    set_call("jsonb_insert", Target, Path, Value, [InsertAfter]).
+    set_call("jsonb_insert", Target, Path, Value,
+             [qast:value(InsertAfter, #{type => boolean})]).
 
 set_call(FnName, Target, Path, Value, Extra) ->
     PathAst = qast:value(Path, #{type => {array, text}}),
