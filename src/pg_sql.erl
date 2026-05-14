@@ -159,7 +159,11 @@
 %% Sql operations
 %% =============================================================================
 
--type value() :: qast:ast_node() | any().
+%% DSL expression: either an AST node, or any term that gets auto-wrapped
+%% as a `$value` placeholder at SQL generation time.
+-type expr() :: qast:ast_node() | term().
+
+-export_type([expr/0]).
 
 %% = Primitive =================================================================
 
@@ -187,118 +191,118 @@
 'not'(A) ->
     qast:exp([qast:raw("not "), A], #{type => boolean}).
 
--spec '=:='(value(), value()) -> qast:ast_node().
+-spec '=:='(expr(), expr()) -> qast:ast_node().
 '=:='(A, B) ->
     qast:exp([qast:raw("("), A, qast:raw(" = "), B, qast:raw(")")], #{type => boolean}).
 
--spec '=/='(value(), value()) -> qast:ast_node().
+-spec '=/='(expr(), expr()) -> qast:ast_node().
 '=/='(A, B) -> 'not'('=:='(A,B)).
 
--spec '>'(value(), value()) -> qast:ast_node().
+-spec '>'(expr(), expr()) -> qast:ast_node().
 '>'(A, B) ->
     qast:exp([qast:raw("("), A, qast:raw(" > "), B, qast:raw(")")], #{type => boolean}).
--spec '>='(value(), value()) -> qast:ast_node().
+-spec '>='(expr(), expr()) -> qast:ast_node().
 '>='(A, B) ->
     qast:exp([qast:raw("("), A, qast:raw(" >= "), B, qast:raw(")")], #{type => boolean}).
--spec '<'(value(), value()) -> qast:ast_node().
+-spec '<'(expr(), expr()) -> qast:ast_node().
 '<'(A, B) ->
     qast:exp([qast:raw("("), A, qast:raw(" < "), B, qast:raw(")")], #{type => boolean}).
--spec '=<'(value(), value()) -> qast:ast_node().
+-spec '=<'(expr(), expr()) -> qast:ast_node().
 '=<'(A, B) ->
     qast:exp([qast:raw("("), A, qast:raw(" <= "), B, qast:raw(")")], #{type => boolean}).
 
--spec 'is'(value(), value()) -> qast:ast_node().
+-spec 'is'(expr(), expr()) -> qast:ast_node().
 is(A, B) ->
     qast:exp([A, qast:raw(" is "), B], #{type => boolean}).
 
--spec 'is_null'(value()) -> qast:ast_node().
+-spec 'is_null'(expr()) -> qast:ast_node().
 is_null(A) ->
     is(A, qast:raw("null")).
 
--spec 'is_not_null'(value()) -> qast:ast_node().
+-spec 'is_not_null'(expr()) -> qast:ast_node().
 is_not_null(A) ->
     qast:exp([A, qast:raw(" is not null")], #{type => boolean}).
 
--spec is_distinct_from(value(), value()) -> qast:ast_node().
+-spec is_distinct_from(expr(), expr()) -> qast:ast_node().
 is_distinct_from(A, B) ->
     qast:exp([A, qast:raw(" is distinct from "), B], #{type => boolean}).
 
--spec is_not_distinct_from(value(), value()) -> qast:ast_node().
+-spec is_not_distinct_from(expr(), expr()) -> qast:ast_node().
 is_not_distinct_from(A, B) ->
     qast:exp([A, qast:raw(" is not distinct from "), B], #{type => boolean}).
 
 %% @TODO type opts
--spec '+'(value(), value()) -> qast:ast_node().
+-spec '+'(expr(), expr()) -> qast:ast_node().
 '+'(A, B) ->
     qast:exp([qast:raw("("), A, qast:raw(" + "), B, qast:raw(")")]).
--spec '-'(value(), value()) -> qast:ast_node().
+-spec '-'(expr(), expr()) -> qast:ast_node().
 '-'(A, B) ->
     qast:exp([qast:raw("("), A, qast:raw(" - "), B, qast:raw(")")]).
--spec '*'(value(), value()) -> qast:ast_node().
+-spec '*'(expr(), expr()) -> qast:ast_node().
 '*'(A, B) ->
     qast:exp([qast:raw("("), A, qast:raw(" * "), B, qast:raw(")")]).
--spec '/'(value(), value()) -> qast:ast_node().
+-spec '/'(expr(), expr()) -> qast:ast_node().
 '/'(A, B) ->
     qast:exp([qast:raw("("), A, qast:raw(" / "), B, qast:raw(")")]).
 
--spec 'abs'(value()) -> qast:ast_node().
+-spec 'abs'(expr()) -> qast:ast_node().
 abs(A) ->
     qast:exp([qast:raw("abs("), A, qast:raw(")")], qast:opts(A)).
 
--spec 'div'(value(), value()) -> qast:ast_node().
+-spec 'div'(expr(), expr()) -> qast:ast_node().
 'div'(A, B) ->
     call("div", [A, B], qast:opts(A)).
 
--spec 'rem'(value(), value()) -> qast:ast_node().
+-spec 'rem'(expr(), expr()) -> qast:ast_node().
 'rem'(A, B) -> mod(A, B).
 
 %% = Numeric functions =========================================================
 
--spec mod(value(), value()) -> qast:ast_node().
+-spec mod(expr(), expr()) -> qast:ast_node().
 mod(A, B) ->
     call("mod", [A, B], qast:opts(A)).
 
--spec round(value()) -> qast:ast_node().
+-spec round(expr()) -> qast:ast_node().
 round(A) ->
     call("round", [A], qast:opts(A)).
 
--spec round(value(), value()) -> qast:ast_node().
+-spec round(expr(), expr()) -> qast:ast_node().
 round(A, N) ->
     call("round", [A, N], qast:opts(A)).
 
--spec ceil(value()) -> qast:ast_node().
+-spec ceil(expr()) -> qast:ast_node().
 ceil(A) ->
     call("ceil", [A], qast:opts(A)).
 
--spec floor(value()) -> qast:ast_node().
+-spec floor(expr()) -> qast:ast_node().
 floor(A) ->
     call("floor", [A], qast:opts(A)).
 
--spec power(value(), value()) -> qast:ast_node().
+-spec power(expr(), expr()) -> qast:ast_node().
 power(A, B) ->
     call("power", [A, B], qast:opts(A)).
 
--spec sqrt(value()) -> qast:ast_node().
+-spec sqrt(expr()) -> qast:ast_node().
 sqrt(A) ->
     call("sqrt", [A], qast:opts(A)).
 
--spec ln(value()) -> qast:ast_node().
+-spec ln(expr()) -> qast:ast_node().
 ln(A) ->
     call("ln", [A], qast:opts(A)).
 
--spec log(value()) -> qast:ast_node().
+-spec log(expr()) -> qast:ast_node().
 log(A) ->
     call("log", [A], qast:opts(A)).
 
--spec log(value(), value()) -> qast:ast_node().
+-spec log(expr(), expr()) -> qast:ast_node().
 log(B, A) ->
     call("log", [B, A], qast:opts(A)).
 
--spec exp(value()) -> qast:ast_node().
+-spec exp(expr()) -> qast:ast_node().
 exp(A) ->
     call("exp", [A], qast:opts(A)).
 
--spec sign(value()) -> qast:ast_node().
+-spec sign(expr()) -> qast:ast_node().
 sign(A) ->
     call("sign", [A], qast:opts(A)).
 
@@ -308,10 +312,10 @@ random() ->
 
 %% = LIKE ======================================================================
 
--spec '~'(value(), value()) -> qast:ast_node().
+-spec '~'(expr(), expr()) -> qast:ast_node().
 '~'(A, B) ->
     qast:exp([qast:raw("("), A, qast:raw(" ~ "), B, qast:raw(")")], #{type => boolean}).
--spec '~*'(value(), value()) -> qast:ast_node().
+-spec '~*'(expr(), expr()) -> qast:ast_node().
 '~*'(A, B) ->
     qast:exp([qast:raw("("), A, qast:raw(" ~* "), B, qast:raw(")")], #{type => boolean}).
 like(A, B) ->
@@ -329,31 +333,31 @@ sum(Ast) ->
 count(Ast) ->
     call("count", [Ast], #{type => integer}).
 
--spec 'min'(value()) -> qast:ast_node().
+-spec 'min'(expr()) -> qast:ast_node().
 min(Ast) ->
     call("min", [Ast], qast:opts(Ast)).
 
--spec 'max'(value()) -> qast:ast_node().
+-spec 'max'(expr()) -> qast:ast_node().
 max(Ast) ->
     call("max", [Ast], qast:opts(Ast)).
 
--spec 'distinct'(value()) -> qast:ast_node().
+-spec 'distinct'(expr()) -> qast:ast_node().
 distinct(Ast) ->
     call("distinct ", [Ast], qast:opts(Ast)).
 
--spec 'array_agg'(value()) -> qast:ast_node().
+-spec 'array_agg'(expr()) -> qast:ast_node().
 array_agg(Ast) ->
     Opts = qast:opts(Ast),
     Type = maps:get(type, Opts, undefined),
     NewOpts = Opts#{type => {array, Type}},
     call("array_agg", [Ast], NewOpts).
 
--type agg_order_spec() :: value()
-                        | {value(), asc | desc}
-                        | {value(), asc | desc, nulls_first | nulls_last}.
+-type agg_order_spec() :: expr()
+                        | {expr(), asc | desc}
+                        | {expr(), asc | desc, nulls_first | nulls_last}.
 -type agg_order_specs() :: [agg_order_spec(), ...].
 
--spec 'array_agg'(value(), agg_order_specs()) -> qast:ast_node().
+-spec 'array_agg'(expr(), agg_order_specs()) -> qast:ast_node().
 array_agg(Ast, OrderSpecs) ->
     Opts = qast:opts(Ast),
     Type = maps:get(type, Opts, undefined),
@@ -364,27 +368,27 @@ array_agg(Ast, OrderSpecs) ->
         qast:raw(")")
     ], NewOpts).
 
--spec avg(value()) -> qast:ast_node().
+-spec avg(expr()) -> qast:ast_node().
 avg(A) ->
     call("avg", [A], qast:opts(A)).
 
--spec bool_and(value()) -> qast:ast_node().
+-spec bool_and(expr()) -> qast:ast_node().
 bool_and(A) ->
     call("bool_and", [A], #{type => boolean}).
 
--spec bool_or(value()) -> qast:ast_node().
+-spec bool_or(expr()) -> qast:ast_node().
 bool_or(A) ->
     call("bool_or", [A], #{type => boolean}).
 
--spec every(value()) -> qast:ast_node().
+-spec every(expr()) -> qast:ast_node().
 every(A) ->
     call("every", [A], #{type => boolean}).
 
--spec string_agg(value(), value()) -> qast:ast_node().
+-spec string_agg(expr(), expr()) -> qast:ast_node().
 string_agg(Expr, Sep) ->
     call("string_agg", [Expr, Sep], #{type => text}).
 
--spec string_agg(value(), value(), agg_order_specs()) -> qast:ast_node().
+-spec string_agg(expr(), expr(), agg_order_specs()) -> qast:ast_node().
 string_agg(Expr, Sep, OrderSpecs) ->
     qast:exp([
         qast:raw("string_agg("), Expr, qast:raw(","), Sep,
@@ -392,11 +396,11 @@ string_agg(Expr, Sep, OrderSpecs) ->
         qast:raw(")")
     ], #{type => text}).
 
--spec json_agg(value()) -> qast:ast_node().
+-spec json_agg(expr()) -> qast:ast_node().
 json_agg(A) ->
     call("json_agg", [A], #{type => json}).
 
--spec json_agg(value(), agg_order_specs()) -> qast:ast_node().
+-spec json_agg(expr(), agg_order_specs()) -> qast:ast_node().
 json_agg(A, OrderSpecs) ->
     qast:exp([
         qast:raw("json_agg("), A,
@@ -404,11 +408,11 @@ json_agg(A, OrderSpecs) ->
         qast:raw(")")
     ], #{type => json}).
 
--spec jsonb_agg(value()) -> qast:ast_node().
+-spec jsonb_agg(expr()) -> qast:ast_node().
 jsonb_agg(A) ->
     call("jsonb_agg", [A], #{type => jsonb}).
 
--spec jsonb_agg(value(), agg_order_specs()) -> qast:ast_node().
+-spec jsonb_agg(expr(), agg_order_specs()) -> qast:ast_node().
 jsonb_agg(A, OrderSpecs) ->
     qast:exp([
         qast:raw("jsonb_agg("), A,
@@ -416,15 +420,15 @@ jsonb_agg(A, OrderSpecs) ->
         qast:raw(")")
     ], #{type => jsonb}).
 
--spec json_object_agg(value(), value()) -> qast:ast_node().
+-spec json_object_agg(expr(), expr()) -> qast:ast_node().
 json_object_agg(K, V) ->
     call("json_object_agg", [K, V], #{type => json}).
 
--spec jsonb_object_agg(value(), value()) -> qast:ast_node().
+-spec jsonb_object_agg(expr(), expr()) -> qast:ast_node().
 jsonb_object_agg(K, V) ->
     call("jsonb_object_agg", [K, V], #{type => jsonb}).
 
--spec percentile_cont(value(), value()) -> qast:ast_node().
+-spec percentile_cont(expr(), expr()) -> qast:ast_node().
 percentile_cont(Frac, OrderExpr) ->
     qast:exp([
         qast:raw("percentile_cont("), Frac,
@@ -432,7 +436,7 @@ percentile_cont(Frac, OrderExpr) ->
         qast:raw(")")
     ], qast:opts(OrderExpr)).
 
--spec percentile_disc(value(), value()) -> qast:ast_node().
+-spec percentile_disc(expr(), expr()) -> qast:ast_node().
 percentile_disc(Frac, OrderExpr) ->
     qast:exp([
         qast:raw("percentile_disc("), Frac,
@@ -440,14 +444,14 @@ percentile_disc(Frac, OrderExpr) ->
         qast:raw(")")
     ], qast:opts(OrderExpr)).
 
--spec mode(value()) -> qast:ast_node().
+-spec mode(expr()) -> qast:ast_node().
 mode(OrderExpr) ->
     qast:exp([
         qast:raw("mode() within group (order by "), OrderExpr,
         qast:raw(")")
     ], qast:opts(OrderExpr)).
 
--spec filter(qast:ast_node(), value()) -> qast:ast_node().
+-spec filter(qast:ast_node(), expr()) -> qast:ast_node().
 filter(AggAst, Cond) ->
     qast:exp([
         AggAst, qast:raw(" filter (where "), Cond, qast:raw(")")
@@ -465,25 +469,25 @@ agg_order_spec_exp({_F, D, N} = T) when
     equery_utils:order_item_exp(T);
 agg_order_spec_exp(F) -> F.
 
--spec 'trunc'(value(), qast:ast_node() | non_neg_integer()) -> qast:ast_node().
+-spec 'trunc'(expr(), qast:ast_node() | non_neg_integer()) -> qast:ast_node().
 'trunc'(V, N) ->
     call("trunc", [V, N], qast:opts(V)).
 
 %% = Math ======================================================================
 
--spec 'min'(value(), value()) -> qast:ast_node().
+-spec 'min'(expr(), expr()) -> qast:ast_node().
 min(A, B) ->
     qast:exp([qast:raw("LEAST("), A, qast:raw(","), B, qast:raw(")")], qast:opts(A)).
 
--spec 'max'(value(), value()) -> qast:ast_node().
+-spec 'max'(expr(), expr()) -> qast:ast_node().
 max(A, B) ->
     qast:exp([qast:raw("GREATEST("), A, qast:raw(","), B, qast:raw(")")], qast:opts(A)).
 
--spec greatest([value(), ...]) -> qast:ast_node().
+-spec greatest([expr(), ...]) -> qast:ast_node().
 greatest([H | _] = List) ->
     call("GREATEST", List, qast:opts(H)).
 
--spec least([value(), ...]) -> qast:ast_node().
+-spec least([expr(), ...]) -> qast:ast_node().
 least([H | _] = List) ->
     call("LEAST", List, qast:opts(H)).
 
@@ -510,11 +514,11 @@ coalesce([H|_]=List) ->
         qast:raw(")")
     ], maps:with([type], qast:opts(H))).
 
--spec case_when([{value(), value()}, ...]) -> qast:ast_node().
+-spec case_when([{expr(), expr()}, ...]) -> qast:ast_node().
 case_when(Whens) ->
     case_when(Whens, undefined).
 
--spec case_when([{value(), value()}, ...], value() | undefined) -> qast:ast_node().
+-spec case_when([{expr(), expr()}, ...], expr() | undefined) -> qast:ast_node().
 case_when([{_, FirstThen}|_]=Whens, ElseSpec) ->
     Opts = maps:with([type], qast:opts(FirstThen)),
     WhenExps = lists:map(fun({W, T}) ->
@@ -541,7 +545,7 @@ in(A, B) ->
 exists(#query{}=Q) ->
     qast:exp([qast:raw("exists ("), qsql:select(Q), qast:raw(")")], #{type => boolean}).
 
--spec call(iodata(), [value()], qast:opts()) -> qast:ast_node().
+-spec call(iodata(), [expr()], qast:opts()) -> qast:ast_node().
 call(FunName, Args, Opts) ->
     qast:exp([
         qast:raw([FunName, "("]),
@@ -554,47 +558,47 @@ call(FunName, Args, Opts) ->
 '@>'(A, B) ->
     qast:exp([A, qast:raw(" @> "), B], #{type => boolean}).
 
--spec '<@'(value(), value()) -> qast:ast_node().
+-spec '<@'(expr(), expr()) -> qast:ast_node().
 '<@'(A, B) ->
     qast:exp([A, qast:raw(" <@ "), B], #{type => boolean}).
 
--spec '&&'(value(), value()) -> qast:ast_node().
+-spec '&&'(expr(), expr()) -> qast:ast_node().
 '&&'(A, B) ->
     qast:exp([A, qast:raw(" && "), B], #{type => boolean}).
 
--spec array_length(value()) -> qast:ast_node().
+-spec array_length(expr()) -> qast:ast_node().
 array_length(Arr) ->
     array_length(Arr, qast:value(1, #{type => integer})).
 
--spec array_length(value(), value()) -> qast:ast_node().
+-spec array_length(expr(), expr()) -> qast:ast_node().
 array_length(Arr, Dim) ->
     call("array_length", [Arr, Dim], #{type => integer}).
 
--spec array_position(value(), value()) -> qast:ast_node().
+-spec array_position(expr(), expr()) -> qast:ast_node().
 array_position(Arr, Elem) ->
     call("array_position", [Arr, Elem], #{type => integer}).
 
--spec array_append(value(), value()) -> qast:ast_node().
+-spec array_append(expr(), expr()) -> qast:ast_node().
 array_append(Arr, Elem) ->
     call("array_append", [Arr, Elem], qast:opts(Arr)).
 
--spec array_prepend(value(), value()) -> qast:ast_node().
+-spec array_prepend(expr(), expr()) -> qast:ast_node().
 array_prepend(Elem, Arr) ->
     call("array_prepend", [Elem, Arr], qast:opts(Arr)).
 
--spec array_remove(value(), value()) -> qast:ast_node().
+-spec array_remove(expr(), expr()) -> qast:ast_node().
 array_remove(Arr, Elem) ->
     call("array_remove", [Arr, Elem], qast:opts(Arr)).
 
--spec array_replace(value(), value(), value()) -> qast:ast_node().
+-spec array_replace(expr(), expr(), expr()) -> qast:ast_node().
 array_replace(Arr, From, To) ->
     call("array_replace", [Arr, From, To], qast:opts(Arr)).
 
--spec array_cat(value(), value()) -> qast:ast_node().
+-spec array_cat(expr(), expr()) -> qast:ast_node().
 array_cat(A, B) ->
     call("array_cat", [A, B], qast:opts(A)).
 
--spec unnest(value()) -> qast:ast_node().
+-spec unnest(expr()) -> qast:ast_node().
 unnest(Arr) ->
     ElemType =
         case maps:find(type, qast:opts(Arr)) of
@@ -606,7 +610,7 @@ unnest(Arr) ->
         #{type => {model, undefined, [{unnest, #{type => ElemType}}]}}
     ).
 
--spec array([value()]) -> qast:ast_node().
+-spec array([expr()]) -> qast:ast_node().
 array(Items) when is_list(Items) ->
     Opts = case Items of
         [] -> #{};
@@ -622,7 +626,7 @@ array(Items) when is_list(Items) ->
 
 %% = String / array concat =====================================================
 
--spec '||'(value(), value()) -> qast:ast_node().
+-spec '||'(expr(), expr()) -> qast:ast_node().
 '||'(A, B) ->
     qast:exp([qast:raw("("), A, qast:raw(" || "), B, qast:raw(")")], qast:opts(A)).
 
@@ -674,12 +678,12 @@ datetime_field_str(timezone_minute) -> <<"timezone_minute">>;
 datetime_field_str(week) -> <<"week">>;
 datetime_field_str(year) -> <<"year">>.
 
--spec date_trunc(datetime_field(), value()) -> qast:ast_node().
+-spec date_trunc(datetime_field(), expr()) -> qast:ast_node().
 date_trunc(Field, Source) ->
     FieldBin = datetime_field_str(Field),
     call("date_trunc", [qast:value(FieldBin, #{type => text}), Source], qast:opts(Source)).
 
--spec extract(datetime_field(), value()) -> qast:ast_node().
+-spec extract(datetime_field(), expr()) -> qast:ast_node().
 extract(Field, Source) ->
     FieldBin = datetime_field_str(Field),
     qast:exp([
@@ -690,122 +694,122 @@ extract(Field, Source) ->
         qast:raw(")")
     ], #{type => numeric}).
 
--spec date_part(datetime_field(), value()) -> qast:ast_node().
+-spec date_part(datetime_field(), expr()) -> qast:ast_node().
 date_part(Field, Source) ->
     FieldBin = datetime_field_str(Field),
     call("date_part", [qast:value(FieldBin, #{type => text}), Source], #{type => float8}).
 
--spec age(value()) -> qast:ast_node().
+-spec age(expr()) -> qast:ast_node().
 age(A) ->
     call("age", [A], #{type => interval}).
 
--spec age(value(), value()) -> qast:ast_node().
+-spec age(expr(), expr()) -> qast:ast_node().
 age(A, B) ->
     call("age", [A, B], #{type => interval}).
 
--spec to_char(value(), value()) -> qast:ast_node().
+-spec to_char(expr(), expr()) -> qast:ast_node().
 to_char(A, Fmt) ->
     call("to_char", [A, Fmt], #{type => text}).
 
--spec to_date(value(), value()) -> qast:ast_node().
+-spec to_date(expr(), expr()) -> qast:ast_node().
 to_date(A, Fmt) ->
     call("to_date", [A, Fmt], #{type => date}).
 
--spec to_timestamp(value()) -> qast:ast_node().
+-spec to_timestamp(expr()) -> qast:ast_node().
 to_timestamp(A) ->
     call("to_timestamp", [A], #{type => timestamptz}).
 
--spec to_timestamp(value(), value()) -> qast:ast_node().
+-spec to_timestamp(expr(), expr()) -> qast:ast_node().
 to_timestamp(A, Fmt) ->
     call("to_timestamp", [A, Fmt], #{type => timestamptz}).
 
 %% = String functions ==========================================================
 
--spec concat([value(), ...]) -> qast:ast_node().
+-spec concat([expr(), ...]) -> qast:ast_node().
 concat(List) when is_list(List) ->
     call("concat", List, #{type => text}).
 
--spec concat(value(), value()) -> qast:ast_node().
+-spec concat(expr(), expr()) -> qast:ast_node().
 concat(A, B) ->
     call("concat", [A, B], #{type => text}).
 
--spec length(value()) -> qast:ast_node().
+-spec length(expr()) -> qast:ast_node().
 length(A) ->
     call("length", [A], #{type => integer}).
 
--spec char_length(value()) -> qast:ast_node().
+-spec char_length(expr()) -> qast:ast_node().
 char_length(A) ->
     call("char_length", [A], #{type => integer}).
 
--spec lower(value()) -> qast:ast_node().
+-spec lower(expr()) -> qast:ast_node().
 lower(A) ->
     call("lower", [A], qast:opts(A)).
 
--spec upper(value()) -> qast:ast_node().
+-spec upper(expr()) -> qast:ast_node().
 upper(A) ->
     call("upper", [A], qast:opts(A)).
 
--spec trim(value()) -> qast:ast_node().
+-spec trim(expr()) -> qast:ast_node().
 trim(A) ->
     call("trim", [A], qast:opts(A)).
 
--spec trim(value(), value()) -> qast:ast_node().
+-spec trim(expr(), expr()) -> qast:ast_node().
 trim(A, Chars) ->
     call("trim", [A, Chars], qast:opts(A)).
 
--spec ltrim(value()) -> qast:ast_node().
+-spec ltrim(expr()) -> qast:ast_node().
 ltrim(A) ->
     call("ltrim", [A], qast:opts(A)).
 
--spec ltrim(value(), value()) -> qast:ast_node().
+-spec ltrim(expr(), expr()) -> qast:ast_node().
 ltrim(A, Chars) ->
     call("ltrim", [A, Chars], qast:opts(A)).
 
--spec rtrim(value()) -> qast:ast_node().
+-spec rtrim(expr()) -> qast:ast_node().
 rtrim(A) ->
     call("rtrim", [A], qast:opts(A)).
 
--spec rtrim(value(), value()) -> qast:ast_node().
+-spec rtrim(expr(), expr()) -> qast:ast_node().
 rtrim(A, Chars) ->
     call("rtrim", [A, Chars], qast:opts(A)).
 
--spec replace(value(), value(), value()) -> qast:ast_node().
+-spec replace(expr(), expr(), expr()) -> qast:ast_node().
 replace(A, From, To) ->
     call("replace", [A, From, To], qast:opts(A)).
 
--spec split_part(value(), value(), value()) -> qast:ast_node().
+-spec split_part(expr(), expr(), expr()) -> qast:ast_node().
 split_part(A, Delim, N) ->
     call("split_part", [A, Delim, N], #{type => text}).
 
--spec substring(value(), value()) -> qast:ast_node().
+-spec substring(expr(), expr()) -> qast:ast_node().
 substring(A, From) ->
     call("substring", [A, From], qast:opts(A)).
 
--spec substring(value(), value(), value()) -> qast:ast_node().
+-spec substring(expr(), expr(), expr()) -> qast:ast_node().
 substring(A, From, Len) ->
     call("substring", [A, From, Len], qast:opts(A)).
 
--spec strpos(value(), value()) -> qast:ast_node().
+-spec strpos(expr(), expr()) -> qast:ast_node().
 strpos(Haystack, Needle) ->
     call("strpos", [Haystack, Needle], #{type => integer}).
 
--spec starts_with(value(), value()) -> qast:ast_node().
+-spec starts_with(expr(), expr()) -> qast:ast_node().
 starts_with(A, Prefix) ->
     call("starts_with", [A, Prefix], #{type => boolean}).
 
--spec regexp_replace(value(), value(), value()) -> qast:ast_node().
+-spec regexp_replace(expr(), expr(), expr()) -> qast:ast_node().
 regexp_replace(A, Pattern, Repl) ->
     call("regexp_replace", [A, Pattern, Repl], qast:opts(A)).
 
--spec regexp_replace(value(), value(), value(), value()) -> qast:ast_node().
+-spec regexp_replace(expr(), expr(), expr(), expr()) -> qast:ast_node().
 regexp_replace(A, Pattern, Repl, Flags) ->
     call("regexp_replace", [A, Pattern, Repl, Flags], qast:opts(A)).
 
--spec regexp_match(value(), value()) -> qast:ast_node().
+-spec regexp_match(expr(), expr()) -> qast:ast_node().
 regexp_match(A, Pattern) ->
     call("regexp_match", [A, Pattern], #{type => {array, text}}).
 
--spec regexp_match(value(), value(), value()) -> qast:ast_node().
+-spec regexp_match(expr(), expr(), expr()) -> qast:ast_node().
 regexp_match(A, Pattern, Flags) ->
     call("regexp_match", [A, Pattern, Flags], #{type => {array, text}}).
 
