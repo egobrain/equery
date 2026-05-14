@@ -129,7 +129,17 @@
 %% Array functions
 -export([
          '@>'/2,
-         array/1
+         '<@'/2,
+         '&&'/2,
+         array/1,
+         array_length/1, array_length/2,
+         array_position/2,
+         array_append/2,
+         array_prepend/2,
+         array_remove/2,
+         array_replace/3,
+         array_cat/2,
+         unnest/1
         ]).
 
 %% String / array concat
@@ -536,6 +546,55 @@ call(FunName, Args, Opts) ->
 
 '@>'(A, B) ->
     qast:exp([A, qast:raw(" @> "), B], #{type => boolean}).
+
+-spec '<@'(value(), value()) -> qast:ast_node().
+'<@'(A, B) ->
+    qast:exp([A, qast:raw(" <@ "), B], #{type => boolean}).
+
+-spec '&&'(value(), value()) -> qast:ast_node().
+'&&'(A, B) ->
+    qast:exp([A, qast:raw(" && "), B], #{type => boolean}).
+
+-spec array_length(value()) -> qast:ast_node().
+array_length(Arr) ->
+    array_length(Arr, 1).
+
+-spec array_length(value(), value()) -> qast:ast_node().
+array_length(Arr, Dim) ->
+    call("array_length", [Arr, Dim], #{type => integer}).
+
+-spec array_position(value(), value()) -> qast:ast_node().
+array_position(Arr, Elem) ->
+    call("array_position", [Arr, Elem], #{type => integer}).
+
+-spec array_append(value(), value()) -> qast:ast_node().
+array_append(Arr, Elem) ->
+    call("array_append", [Arr, Elem], qast:opts(Arr)).
+
+-spec array_prepend(value(), value()) -> qast:ast_node().
+array_prepend(Elem, Arr) ->
+    call("array_prepend", [Elem, Arr], qast:opts(Arr)).
+
+-spec array_remove(value(), value()) -> qast:ast_node().
+array_remove(Arr, Elem) ->
+    call("array_remove", [Arr, Elem], qast:opts(Arr)).
+
+-spec array_replace(value(), value(), value()) -> qast:ast_node().
+array_replace(Arr, From, To) ->
+    call("array_replace", [Arr, From, To], qast:opts(Arr)).
+
+-spec array_cat(value(), value()) -> qast:ast_node().
+array_cat(A, B) ->
+    call("array_cat", [A, B], qast:opts(A)).
+
+-spec unnest(value()) -> qast:ast_node().
+unnest(Arr) ->
+    Opts =
+        case maps:find(type, qast:opts(Arr)) of
+            {ok, {array, T}} -> #{type => T};
+            _ -> #{}
+        end,
+    call("unnest", [Arr], Opts).
 
 -spec array([value()]) -> qast:ast_node().
 array(Items) when is_list(Items) ->
