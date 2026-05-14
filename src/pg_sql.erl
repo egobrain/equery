@@ -589,12 +589,15 @@ array_cat(A, B) ->
 
 -spec unnest(value()) -> qast:ast_node().
 unnest(Arr) ->
-    Opts =
+    ElemType =
         case maps:find(type, qast:opts(Arr)) of
-            {ok, {array, T}} -> #{type => T};
-            _ -> #{}
+            {ok, {array, T}} -> T;
+            _ -> undefined
         end,
-    call("unnest", [Arr], Opts).
+    qast:exp(
+        [qast:raw("unnest("), Arr, qast:raw(")")],
+        #{type => {model, undefined, [{unnest, #{type => ElemType}}]}}
+    ).
 
 -spec array([value()]) -> qast:ast_node().
 array(Items) when is_list(Items) ->

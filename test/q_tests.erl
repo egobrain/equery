@@ -1569,8 +1569,46 @@ array_funs_test_() ->
 unnest_type_test() ->
     Typed = qast:value([1,2,3], #{type => {array, integer}}),
     Untyped = qast:raw("u"),
-    ?assertEqual(integer, maps:get(type, qast:opts(pg_sql:unnest(Typed)))),
-    ?assertEqual(error, maps:find(type, qast:opts(pg_sql:unnest(Untyped)))).
+    ?assertEqual(
+        {model, undefined, [{unnest, #{type => integer}}]},
+        maps:get(type, qast:opts(pg_sql:unnest(Typed)))),
+    ?assertEqual(
+        {model, undefined, [{unnest, #{type => undefined}}]},
+        maps:get(type, qast:opts(pg_sql:unnest(Untyped)))).
+
+from_unnest_test() ->
+    {Sql, Args, Type} = to_sql(
+        qsql:select(q:pipe(q:from(pg_sql:unnest(pg_sql:array([1, 2, 3]))), [
+            q:select(fun([#{unnest := V}]) -> #{n => V} end)
+        ]))),
+    ?assertEqual(
+         <<"select "
+           "\"__alias-0\".\"unnest\" as \"n\" "
+           "from unnest(ARRAY[$1,$2,$3]) as \"__alias-0\"">>,
+         Sql),
+    ?assertEqual([1, 2, 3], Args),
+    ?assertEqual({model, undefined, [{n, #{type => undefined}}]}, Type).
+
+lateral_unnest_test() ->
+    {Sql, _Args, _Type} = to_sql(
+        qsql:select(q:pipe(q:from(?MODULE), [
+            q:lateral_join(inner, fun([#{name := N}]) ->
+                q:from(pg_sql:unnest(N))
+            end),
+            q:select(fun([#{id := Id}, #{unnest := V}]) ->
+                #{id => Id, tag => V}
+            end)
+        ]))),
+    ?assertEqual(
+         <<"select "
+           "\"__alias-0\".\"id\" as \"id\","
+           "\"__alias-1\".\"unnest\" as \"tag\" "
+           "from \"users\" as \"__alias-0\" "
+           "inner join lateral ("
+               "select \"__alias-2\".\"unnest\" as \"unnest\" "
+               "from unnest(\"__alias-0\".\"name\") as \"__alias-2\""
+           ") as \"__alias-1\" on true">>,
+         Sql).
 
 '@>_test'() ->
     {Sql, Args, ReturningFields} = to_sql(
