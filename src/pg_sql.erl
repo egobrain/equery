@@ -128,7 +128,13 @@
 
 %% Array functions
 -export([
-         '@>'/2
+         '@>'/2,
+         array/1
+        ]).
+
+%% String / array concat
+-export([
+         '||'/2
         ]).
 
 %% Type function
@@ -530,6 +536,26 @@ call(FunName, Args, Opts) ->
 
 '@>'(A, B) ->
     qast:exp([A, qast:raw(" @> "), B], #{type => boolean}).
+
+-spec array([value()]) -> qast:ast_node().
+array(Items) when is_list(Items) ->
+    Opts = case Items of
+        [] -> #{};
+        [H | _] ->
+            ElemType = maps:get(type, qast:opts(H), undefined),
+            #{type => {array, ElemType}}
+    end,
+    qast:exp([
+        qast:raw("ARRAY["),
+        qast:join(Items, qast:raw(",")),
+        qast:raw("]")
+    ], Opts).
+
+%% = String / array concat =====================================================
+
+-spec '||'(value(), value()) -> qast:ast_node().
+'||'(A, B) ->
+    qast:exp([qast:raw("("), A, qast:raw(" || "), B, qast:raw(")")], qast:opts(A)).
 
 %% = Date/time functions =======================================================
 
