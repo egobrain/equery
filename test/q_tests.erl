@@ -1061,6 +1061,63 @@ distinct_operation_test() ->
     ?assertEqual([], Args),
     ?assertEqual(integer, Feilds).
 
+aggregates_test_() ->
+    A = qast:raw("a"),
+    B = qast:raw("b"),
+    F = qast:raw("f"),
+    Tests = [
+        {<<"avg(a)">>, [], pg_sql:avg(A)},
+        {<<"bool_and(a)">>, [], pg_sql:bool_and(A)},
+        {<<"bool_or(a)">>, [], pg_sql:bool_or(A)},
+        {<<"every(a)">>, [], pg_sql:every(A)},
+        {<<"string_agg(a,b)">>, [], pg_sql:string_agg(A, B)},
+        {<<"string_agg(a,b order by f)">>, [], pg_sql:string_agg(A, B, [F])},
+        {<<"string_agg(a,b order by f ASC,b DESC NULLS LAST)">>, [],
+            pg_sql:string_agg(A, B, [{F, asc}, {B, desc, nulls_last}])},
+        {<<"array_agg(a order by f ASC)">>, [], pg_sql:array_agg(A, [{F, asc}])},
+        {<<"json_agg(a)">>, [], pg_sql:json_agg(A)},
+        {<<"json_agg(a order by f)">>, [], pg_sql:json_agg(A, [F])},
+        {<<"jsonb_agg(a)">>, [], pg_sql:jsonb_agg(A)},
+        {<<"jsonb_agg(a order by f)">>, [], pg_sql:jsonb_agg(A, [F])},
+        {<<"json_object_agg(a,b)">>, [], pg_sql:json_object_agg(A, B)},
+        {<<"jsonb_object_agg(a,b)">>, [], pg_sql:jsonb_object_agg(A, B)},
+        {<<"percentile_cont($1) within group (order by a)">>, [0.5],
+            pg_sql:percentile_cont(0.5, A)},
+        {<<"percentile_disc($1) within group (order by a)">>, [0.9],
+            pg_sql:percentile_disc(0.9, A)},
+        {<<"mode() within group (order by a)">>, [], pg_sql:mode(A)},
+        {<<"count(a) filter (where (b > $1))">>, [10],
+            pg_sql:filter(pg_sql:count(A), pg_sql:'>'(B, 10))}
+    ],
+    [{binary_to_list(Exp), fun() ->
+        ?assertEqual({Exp, ExpArgs}, qast:to_sql(Ast))
+    end} || {Exp, ExpArgs, Ast} <- Tests].
+
+aggregates_query_test() ->
+    {Sql, Args, Feilds} = to_sql(
+        qsql:select(q:pipe(q:from(?MODULE), [
+            q:group_by(fun([#{name := N}]) -> [N] end),
+            q:select(fun([#{id := Id}]) ->
+                #{total => pg_sql:count(Id),
+                  recent => pg_sql:filter(
+                                pg_sql:count(Id),
+                                Id > 100)}
+            end)
+        ]))),
+    ?assertEqual(
+         <<"select "
+           "count(\"__alias-0\".\"id\") filter (where (\"__alias-0\".\"id\" > $1)) "
+               "as \"recent\","
+           "count(\"__alias-0\".\"id\") as \"total\" "
+           "from \"users\" as \"__alias-0\" "
+           "group by \"__alias-0\".\"name\"">>,
+         Sql),
+    ?assertEqual([100], Args),
+    ?assertEqual({model, ?MODULE, [
+        {recent, #{type => integer}},
+        {total, #{type => integer}}
+    ]}, Feilds).
+
 array_agg_operation_test() ->
     {Sql, Args, Feilds} = to_sql(
         qsql:select(q:pipe(q:from(?MODULE), [
