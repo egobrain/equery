@@ -23,7 +23,7 @@ field_name(Atom) when is_atom(Atom) ->
     wrap(atom_to_list(Atom)).
 
 to_binary(Atom) when is_atom(Atom) ->
-    atom_to_binary(Atom, latin1);
+    atom_to_binary(Atom, utf8);
 to_binary(Int) when is_integer(Int) ->
     integer_to_binary(Int);
 to_binary(Bin) when is_binary(Bin) ->
