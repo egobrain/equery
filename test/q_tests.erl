@@ -1440,6 +1440,25 @@ rem_op_test() ->
          Sql),
     ?assertEqual([2, 0], Args).
 
+greatest_least_test() ->
+    A = qast:raw("a"),
+    B = qast:raw("b"),
+    C = qast:raw("c"),
+    ?assertEqual(
+         {<<"GREATEST(a,b,c)">>, []},
+         qast:to_sql(pg_sql:greatest([A, B, C]))),
+    ?assertEqual(
+         {<<"LEAST(a,b,c)">>, []},
+         qast:to_sql(pg_sql:least([A, B, C]))),
+    %% single-element still works
+    ?assertEqual(
+         {<<"GREATEST(a)">>, []},
+         qast:to_sql(pg_sql:greatest([A]))),
+    %% type from first arg
+    Typed = qast:value(1, #{type => integer}),
+    ?assertEqual(integer,
+        maps:get(type, qast:opts(pg_sql:greatest([Typed, qast:value(2)])))).
+
 ops_test_() ->
     Tests = [
         {fun pg_sql:max/2, "GREATEST"},
