@@ -1506,6 +1506,45 @@ exists_test() ->
     ?assertEqual([], Args),
     ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST([name])}, Feilds).
 
+concat_op_test() ->
+    A = qast:raw("a"),
+    B = qast:raw("b"),
+    ?assertEqual(
+         {<<"(a || b)">>, []},
+         qast:to_sql(pg_sql:'||'(A, B))),
+    {Sql, Args, _} = to_sql(
+        qsql:select(q:pipe(q:from(?MODULE), [
+            q:select(fun([#{name := N}]) ->
+                #{full => pg_sql:'||'(N, <<"!">>)}
+            end)
+        ]))),
+    ?assertEqual(
+         <<"select "
+           "(\"__alias-0\".\"name\" || $1) as \"full\" "
+           "from \"users\" as \"__alias-0\"">>,
+         Sql),
+    ?assertEqual([<<"!">>], Args).
+
+array_constructor_test() ->
+    ?assertEqual(
+         {<<"ARRAY[$1,$2,$3]">>, [1, 2, 3]},
+         qast:to_sql(pg_sql:array([1, 2, 3]))),
+    ?assertEqual(
+         {<<"ARRAY[]">>, []},
+         qast:to_sql(pg_sql:array([]))),
+    {Sql, Args, Type} = to_sql(
+        qsql:select(q:pipe(q:from(?MODULE), [
+            q:select(fun([#{id := Id}]) ->
+                pg_sql:array([Id, Id, 42])
+            end)
+        ]))),
+    ?assertEqual(
+         <<"select ARRAY[\"__alias-0\".\"id\",\"__alias-0\".\"id\",$1] "
+           "from \"users\" as \"__alias-0\"">>,
+         Sql),
+    ?assertEqual([42], Args),
+    ?assertEqual({array, integer}, Type).
+
 '@>_test'() ->
     {Sql, Args, ReturningFields} = to_sql(
         qsql:select(q:pipe(q:from(?MODULE), [
