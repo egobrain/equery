@@ -1545,6 +1545,33 @@ array_constructor_test() ->
     ?assertEqual([42], Args),
     ?assertEqual({array, integer}, Type).
 
+array_funs_test_() ->
+    A = qast:raw("a"),
+    B = qast:raw("b"),
+    C = qast:raw("c"),
+    Tests = [
+        {<<"a && b">>, [], pg_sql:'&&'(A, B)},
+        {<<"a <@ b">>, [], pg_sql:'<@'(A, B)},
+        {<<"array_length(a,$1)">>, [1], pg_sql:array_length(A)},
+        {<<"array_length(a,b)">>, [], pg_sql:array_length(A, B)},
+        {<<"array_position(a,b)">>, [], pg_sql:array_position(A, B)},
+        {<<"array_append(a,b)">>, [], pg_sql:array_append(A, B)},
+        {<<"array_prepend(a,b)">>, [], pg_sql:array_prepend(A, B)},
+        {<<"array_remove(a,b)">>, [], pg_sql:array_remove(A, B)},
+        {<<"array_replace(a,b,c)">>, [], pg_sql:array_replace(A, B, C)},
+        {<<"array_cat(a,b)">>, [], pg_sql:array_cat(A, B)},
+        {<<"unnest(a)">>, [], pg_sql:unnest(A)}
+    ],
+    [{binary_to_list(Exp), fun() ->
+        ?assertEqual({Exp, ExpArgs}, qast:to_sql(Ast))
+    end} || {Exp, ExpArgs, Ast} <- Tests].
+
+unnest_type_test() ->
+    Typed = qast:value([1,2,3], #{type => {array, integer}}),
+    Untyped = qast:raw("u"),
+    ?assertEqual(integer, maps:get(type, qast:opts(pg_sql:unnest(Typed)))),
+    ?assertEqual(error, maps:find(type, qast:opts(pg_sql:unnest(Untyped)))).
+
 '@>_test'() ->
     {Sql, Args, ReturningFields} = to_sql(
         qsql:select(q:pipe(q:from(?MODULE), [
