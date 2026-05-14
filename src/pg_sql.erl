@@ -564,7 +564,7 @@ call(FunName, Args, Opts) ->
 
 -spec array_length(value()) -> qast:ast_node().
 array_length(Arr) ->
-    array_length(Arr, 1).
+    array_length(Arr, qast:value(1, #{type => integer})).
 
 -spec array_length(value(), value()) -> qast:ast_node().
 array_length(Arr, Dim) ->
