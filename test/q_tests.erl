@@ -49,6 +49,35 @@ schema_test() ->
     ?assertEqual(?USER_SCHEMA, q:get(schema, q:from(?USER_SCHEMA))),
     ?assertEqual(maps:put(model, ?MODULE, ?USER_SCHEMA), q:get(schema, q:from(?MODULE))).
 
+qualified_schema_test() ->
+    Sch = ?USER_SCHEMA#{schema => <<"public">>},
+    {Sql, _Args, _T} = to_sql(
+        qsql:select(q:pipe(q:from(Sch), [
+            q:where(fun([#{id := Id}]) -> Id =:= 1 end),
+            q:select(fun([#{id := Id}]) -> #{id => Id} end)
+        ]))),
+    ?assertEqual(
+         <<"select \"__alias-0\".\"id\" as \"id\" "
+           "from \"public\".\"users\" as \"__alias-0\" "
+           "where (\"__alias-0\".\"id\" = $1)">>,
+         Sql),
+    %% INSERT/UPDATE/DELETE also pick up the schema
+    {SqlIns, _, _} = to_sql(
+        qsql:insert(q:set(fun(_) -> #{name => <<"a">>} end, q:from(Sch)))),
+    ?assertEqual(true,
+        binary:match(SqlIns, <<"insert into \"public\".\"users\"">>) =/= nomatch),
+    {SqlUpd, _, _} = to_sql(
+        qsql:update(q:pipe(q:from(Sch), [
+            q:set(fun(_) -> #{name => <<"a">>} end),
+            q:where(fun([#{id := Id}]) -> Id =:= 1 end)
+        ]))),
+    ?assertEqual(true,
+        binary:match(SqlUpd, <<"update \"public\".\"users\"">>) =/= nomatch),
+    {SqlDel, _, _} = to_sql(
+        qsql:delete(q:where(fun([#{id := Id}]) -> Id =:= 1 end, q:from(Sch)))),
+    ?assertEqual(true,
+        binary:match(SqlDel, <<"delete from \"public\".\"users\"">>) =/= nomatch).
+
 data_test() ->
     ?assertEqual(
         maps:keys(?USER_FIELDS),

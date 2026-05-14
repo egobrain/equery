@@ -2,6 +2,7 @@
 
 -export([
          wrap/1,
+         wrap_table/1,
          field_name/1,
          to_binary/1,
          order_item_exp/1
@@ -10,6 +11,12 @@
 -spec wrap(iodata()) -> iolist().
 wrap(F) ->
     ["\"", F, "\""].
+
+-spec wrap_table(binary() | {binary(), binary()}) -> iolist().
+wrap_table({Schema, Table}) ->
+    [wrap(Schema), $., wrap(Table)];
+wrap_table(Table) ->
+    wrap(Table).
 
 -spec field_name(atom()) -> iolist().
 field_name(Atom) when is_atom(Atom) ->
