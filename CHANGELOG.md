@@ -9,6 +9,7 @@
 - `q:having/1,2` — SQL `HAVING` clause; composes with `andalso` like `where`.
 - `q:lateral_join/2,3,4` — `LATERAL` join; subquery closure receives outer data, supports custom `ON` condition.
 - `q:order_by/2` — `NULLS FIRST` / `NULLS LAST` via 3-element tuple `{Field, asc|desc, nulls_first|nulls_last}`.
+- `q:first/2,3` — emits `FETCH FIRST n ROWS [ONLY|WITH TIES]`; takes mode `no_ties | with_ties`. Shares the storage slot with `q:limit/1,2`, so whichever is set last wins; `first(N, no_ties)` is equivalent to `limit(N)`.
 - Schema-qualified table names via optional `schema => binary()` field in schema map → emits `"schema"."table"`.
 
 **Expression-level operators and predicates**

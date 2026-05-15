@@ -977,6 +977,61 @@ limit_offset_test() ->
     ?assertEqual([10, 3], Args),
     ?assertEqual({model, ?MODULE, ?USER_FIELDS_LIST}, Feilds).
 
+first_with_ties_test() ->
+    {Sql, Args, _Feilds} = to_sql(
+        qsql:select(q:pipe(q:from(?MODULE), [
+            q:order_by(fun([#{name := Name}]) -> [{Name, asc}] end),
+            q:first(5, with_ties)
+        ]))),
+    ?assertEqual(
+         <<"select "
+           "\"__alias-0\".\"id\" as \"id\","
+           "\"__alias-0\".\"name\" as \"name\","
+           "\"__alias-0\".\"password\" as \"password\","
+           "\"__alias-0\".\"salt\" as \"salt\" "
+           "from \"users\" as \"__alias-0\" "
+           "order by \"__alias-0\".\"name\" ASC"
+           " fetch first $1 rows with ties">>, Sql),
+    ?assertEqual([5], Args).
+
+first_no_ties_equals_limit_test() ->
+    Build = fun(Builder) ->
+        to_sql(qsql:select(q:pipe(q:from(?MODULE), [Builder])))
+    end,
+    ?assertEqual(Build(q:limit(7)), Build(q:first(7, no_ties))).
+
+first_overrides_limit_test() ->
+    {Sql, Args, _Feilds} = to_sql(
+        qsql:select(q:pipe(q:from(?MODULE), [
+            q:limit(10),
+            q:first(5, with_ties)
+        ]))),
+    ?assertEqual(
+         <<"select "
+           "\"__alias-0\".\"id\" as \"id\","
+           "\"__alias-0\".\"name\" as \"name\","
+           "\"__alias-0\".\"password\" as \"password\","
+           "\"__alias-0\".\"salt\" as \"salt\" "
+           "from \"users\" as \"__alias-0\""
+           " fetch first $1 rows with ties">>, Sql),
+    ?assertEqual([5], Args).
+
+limit_overrides_first_test() ->
+    {Sql, Args, _Feilds} = to_sql(
+        qsql:select(q:pipe(q:from(?MODULE), [
+            q:first(5, with_ties),
+            q:limit(10)
+        ]))),
+    ?assertEqual(
+         <<"select "
+           "\"__alias-0\".\"id\" as \"id\","
+           "\"__alias-0\".\"name\" as \"name\","
+           "\"__alias-0\".\"password\" as \"password\","
+           "\"__alias-0\".\"salt\" as \"salt\" "
+           "from \"users\" as \"__alias-0\" "
+           "limit $1">>, Sql),
+    ?assertEqual([10], Args).
+
 complex_test() ->
     {Sql, Args, Feilds} = to_sql(
         qsql:select(q:pipe(q:from(?MODULE), [

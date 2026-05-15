@@ -251,10 +251,16 @@ order_by_exp(OrderBy) ->
     ]).
 
 limit_exp(undefined) -> qast:raw([]);
-limit_exp(Limit) ->
+limit_exp({Value, no_ties}) ->
     qast:exp([
         qast:raw(" limit "),
-        qast:value(Limit, #{type => integer})
+        qast:value(Value, #{type => integer})
+    ]);
+limit_exp({Value, with_ties}) ->
+    qast:exp([
+        qast:raw(" fetch first "),
+        qast:value(Value, #{type => integer}),
+        qast:raw(" rows with ties")
     ]).
 
 offset_exp(undefined) -> qast:raw([]);

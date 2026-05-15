@@ -20,8 +20,8 @@ Builders fall into three categories:
 - **Source**: `from/1`, `using/1,2`, `with/2,3`, `recursive/2` — define
   where data comes from.
 - **Refinement**: `where/1,2`, `having/1,2`, `select/1,2`, `set/1,2`,
-  `data/1,2`, `group_by/1,2`, `order_by/1,2`, `limit/1,2`, `offset/1,2`,
-  `distinct/0,1`, `distinct_on/1,2` — narrow or shape results.
+  `data/1,2`, `group_by/1,2`, `order_by/1,2`, `limit/1,2`, `first/2,3`,
+  `offset/1,2`, `distinct/0,1`, `distinct_on/1,2` — narrow or shape results.
 - **Joins / locks**: `join/2,3,4`, `lateral_join/2,3,4`,
   `lock/1,2,3,4`, `for_update/0,1`.
 
@@ -58,6 +58,7 @@ in `qsql`. SQL expression builders (operators, scalar/aggregate functions,
          on_conflict_where/3, on_conflict_where/4,
          order_by/1, order_by/2,
          limit/1, limit/2,
+         first/2, first/3,
          offset/1, offset/2,
 
          lock/1, lock/2, lock/3, lock/4,
@@ -82,6 +83,7 @@ in `qsql`. SQL expression builders (operators, scalar/aggregate functions,
 -type order_item() :: {qast:ast_node(), asc | desc}
                     | {qast:ast_node(), asc | desc, order_nulls()}.
 -type order() :: [order_item()].
+-type ties_mode() :: no_ties | with_ties.
 -type distinct() :: all | [atom()].
 -type join_type() :: inner | left | right | full | {left, outer} | {right, outer} | {full, outer}.
 -type row_lock_level() :: for_update | for_no_key_update | for_share | for_key_share.
@@ -108,6 +110,7 @@ in `qsql`. SQL expression builders (operators, scalar/aggregate functions,
          select/0,
          set/0,
          order/0,
+         ties_mode/0,
          distinct/0,
          join_type/0,
          row_lock_level/0,
@@ -639,14 +642,31 @@ order_by(Fun, #query{data=Data}=Q) ->
 
 -doc(#{group => <<"Refinement">>}).
 -doc """
-`LIMIT n` — parameterized.
+`LIMIT n` — parameterized. Equivalent to `first(N, no_ties)` and shares
+storage with `first/2,3`: whichever is set last wins.
 """.
 -spec limit(non_neg_integer()) -> qfun().
 limit(Value) -> fun(Q) -> limit(Value, Q) end.
 
 -spec limit(non_neg_integer(), Q) -> Q when Q :: query().
 limit(Value, Q) ->
-    Q#query{limit=Value}.
+    first(Value, no_ties, Q).
+
+-doc(#{group => <<"Refinement">>}).
+-doc """
+`FETCH FIRST n ROWS [ONLY | WITH TIES]` — parameterized.
+
+`with_ties` returns extra rows that tie with the last one on the
+`ORDER BY` key, so requires an `order_by/1,2`. Shares storage with
+`limit/1,2`: `first(N, no_ties)` is equivalent to `limit(N)`, and
+whichever of the two is set last wins.
+""".
+-spec first(non_neg_integer(), ties_mode()) -> qfun().
+first(Value, Mode) -> fun(Q) -> first(Value, Mode, Q) end.
+
+-spec first(non_neg_integer(), ties_mode(), Q) -> Q when Q :: query().
+first(Value, Mode, Q) when Mode =:= with_ties; Mode =:= no_ties ->
+    Q#query{limit={Value, Mode}}.
 
 -doc(#{group => <<"Refinement">>}).
 -doc """
