@@ -1,4 +1,11 @@
 -module(qsql).
+-moduledoc """
+SQL statement compilation.
+
+Turns a `t:q:query/0` into a `t:qast:ast_node/0` of a specific top-level
+statement. Pair with `qast:to_sql/1` to get `{Sql, Args}` ready for
+parameterized execution.
+""".
 
 -include("query.hrl").
 -include("cth.hrl").
@@ -10,6 +17,7 @@
          delete/1
         ]).
 
+-doc("Compile a query into a `SELECT` statement AST.").
 -spec select(q:query()) -> qast:ast_node().
 select(#query{
             tables=Tables,
@@ -43,6 +51,13 @@ select(#query{
         lock(Lock)
     ], Opts).
 
+-doc """
+Compile a query into an `INSERT` statement AST.
+
+If `set` is a `query()`, emits `INSERT INTO t (...) SELECT ...`.
+If `set` is a map, emits `INSERT INTO t (...) VALUES (...)`.
+Always includes `RETURNING` (controlled via `q:select/1,2`).
+""".
 -spec insert(q:query()) -> qast:ast_node().
 insert(#query{
             schema=Schema,
@@ -97,6 +112,7 @@ insert(#query{
         returning_exp(Fields)
     ], Opts).
 
+-doc("Compile a query into an `UPDATE` statement AST. Includes `RETURNING`.").
 -spec update(q:query()) -> qast:ast_node().
 update(#query{
              schema=Schema,
@@ -122,6 +138,7 @@ update(#query{
         returning_exp(Fields)
      ], Opts).
 
+-doc("Compile a query into a `DELETE` statement AST. Includes `RETURNING`.").
 -spec delete(q:query()) -> qast:ast_node().
 delete(#query{
              schema=Schema,

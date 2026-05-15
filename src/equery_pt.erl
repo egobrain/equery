@@ -1,4 +1,17 @@
 -module(equery_pt).
+-moduledoc """
+Parse transform rewriting native Erlang operators into [`pg_sql`](`m:pg_sql`) calls.
+
+Activated by including `equery/include/equery.hrl` in user modules.
+Inside the lambda arguments of `q:where`, `q:select`, `q:join`,
+`q:join`, `q:lateral_join`, `q:having`, etc., Erlang operators like
+`=:=`, `>`, `andalso`, `+` are rewritten to their SQL equivalents.
+
+`transform_fun/1` performs the same rewrite at **runtime** for funs
+created via `erl_eval` — most commonly from the Erlang shell, including
+`remsh` to a running production node. This lets you build queries
+interactively without compile-time setup.
+""".
 
 -export([
          parse_transform/2,

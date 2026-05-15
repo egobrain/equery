@@ -7,7 +7,7 @@ jobs:
     name: Erlang/OTP ${{matrix.otp}} / rebar3 ${{matrix.rebar3}}
     strategy:
       matrix:
-        otp: ['26', '27', '28']
+        otp: ['27', '28']
         rebar3: ['3.26.0']
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
