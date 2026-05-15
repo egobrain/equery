@@ -162,6 +162,13 @@ build_array_test() ->
     ?assertEqual([1, <<"x">>, true], Args),
     ?assertEqual(jsonb, Type).
 
+build_array_json_test() ->
+    {Sql, Args, Type} = to_sql(
+        qjson:json_build_array([qast:value(1), qast:value(<<"x">>)])),
+    ?assertEqual(<<"json_build_array($1,$2)">>, Sql),
+    ?assertEqual([1, <<"x">>], Args),
+    ?assertEqual(json, Type).
+
 to_jsonb_test() ->
     A = qast:raw("a"),
     ?assertEqual({<<"to_jsonb(a)">>, []}, qast:to_sql(qjson:to_jsonb(A))),

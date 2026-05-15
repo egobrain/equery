@@ -248,7 +248,3 @@ set_call(FnName, Target, Path, Value, Extra) ->
 jsonb_strip_nulls(V) ->
     pg_sql:call("jsonb_strip_nulls", [V], #{type => jsonb}).
 
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
-
--endif.
