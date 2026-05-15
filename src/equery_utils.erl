@@ -1,4 +1,11 @@
 -module(equery_utils).
+-moduledoc """
+Identifier wrapping and shared grammar helpers.
+
+Mostly internal: identifier quoting (`wrap/1`, `wrap_table/1`,
+`field_name/1`) and the order-item builder shared between top-level
+`ORDER BY` and aggregate-internal ordering (`order_item_exp/1`).
+""".
 
 -export([
          wrap/1,

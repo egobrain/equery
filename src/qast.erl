@@ -1,4 +1,23 @@
 -module(qast).
+-moduledoc """
+Low-level AST primitives and SQL emission.
+
+All SQL fragments in equery are represented as `ast_node()` tuples:
+
+| Constructor | Meaning |
+|---|---|
+| `qast:value(V)` / `qast:value(V, Opts)` | A `$N` parameter placeholder. `V` is captured as a query argument. |
+| `qast:raw(S)` / `qast:raw(S, Opts)` | Literal SQL fragment — inlined as-is. **Never use with user input.** |
+| `qast:alias(Ref)` / `qast:alias(Ref, Opts)` | Identifier alias resolved at emission time using a stable name like `"__alias-0"`. |
+| `qast:exp(List)` / `qast:exp(List, Opts)` | A composition of nested AST nodes. |
+| `qast:field(TRef, Name, Opts)` | Shortcut for `"alias"."name"`. |
+
+`Opts` is a map carrying optional metadata, most importantly
+`#{type => T}` — used for column type inference in projections.
+
+Render with [`to_sql/1`](`to_sql/1`) to get a parameterized `{Sql, Args}`
+pair.
+""".
 
 -export([
          field/3,
@@ -100,6 +119,13 @@ with_sep([H|T], Sep) -> [Sep, H | with_sep(T, Sep)].
             args=[], args_cnt=0
        }).
 
+-doc """
+Render an AST into a parameterized SQL string.
+
+Returns `{Sql, Args}` ready for `epgsql:equery/3` or similar. Non-AST
+terms appearing anywhere in the AST are auto-wrapped as `qast:value/1`
+placeholders.
+""".
 -spec to_sql(ast_node()) -> {Sql :: binary(), Args :: [term()]}.
 to_sql(Ast) ->
     {Sql, #state{args=Args}} = traverse(
