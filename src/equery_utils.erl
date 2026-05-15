@@ -50,12 +50,3 @@ direction_exp(desc) -> qast:raw(<<" DESC">>).
 nulls_exp(nulls_first) -> qast:raw(<<" NULLS FIRST">>);
 nulls_exp(nulls_last) -> qast:raw(<<" NULLS LAST">>).
 
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
-
-to_binary_test() ->
-    ?assertEqual(<<"atom">>, to_binary(atom)),
-    ?assertEqual(<<"123">>, to_binary(123)),
-    ?assertEqual(<<"bin">>, to_binary(<<"bin">>)).
-
--endif.

@@ -175,6 +175,10 @@ JSON/JSONB live in [`qjson`](`m:qjson`).
          set_type/2
         ]).
 
+-ifdef(TEST).
+-export([type_str/1]).
+-endif.
+
 %% =============================================================================
 %% Sql operations
 %% =============================================================================
@@ -1246,13 +1250,3 @@ to_iodata(Float) when is_float(Float) ->
 join([], _) -> [];
 join([H|T],Sep) -> [H|[[Sep,E]||E<-T]].
 
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
-
-type_str_test() ->
-    ?assertEqual(<<"bigint">>, type_str(bigint)),
-    ?assertEqual(<<"int[]">>, type_str({array, int})),
-    ?assertEqual(<<"custom()">>, type_str({custom, []})),
-    ?assertEqual(<<"custom(a,1,2.0)">>, type_str({custom, [<<"a">>, 1, 2.0]})).
-
--endif.

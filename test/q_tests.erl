@@ -1411,6 +1411,20 @@ datetime_invalid_field_test() ->
     ?assertError(function_clause, pg_sql:date_trunc('"; DROP TABLE x; --', Src)),
     ?assertError(function_clause, pg_sql:date_part(<<"day">>, Src)).
 
+datetime_field_enum_test_() ->
+    Src = qast:raw("t"),
+    Fields = [
+        century, day, decade, dow, doy, epoch, hour,
+        isodow, isoyear, julian, microseconds, millennium,
+        milliseconds, minute, month, quarter, second,
+        timezone, timezone_hour, timezone_minute, week, year
+    ],
+    [{atom_to_list(F), fun() ->
+        FBin = atom_to_binary(F, utf8),
+        ?assertEqual({<<"extract(", FBin/binary, " from t)">>, []},
+                     qast:to_sql(pg_sql:extract(F, Src)))
+    end} || F <- Fields].
+
 datetime_query_test() ->
     Created = qast:field(make_ref(), created_at, #{type => timestamptz}),
     {Sql, Args, _Feilds} = to_sql(
